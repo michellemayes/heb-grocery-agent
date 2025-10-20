@@ -133,11 +133,12 @@ class HEBShoppingAgent {
       throw new Error("Could not find add-to-cart button");
     }
 
-    addButton.click();
+    // Use a more realistic click simulation
+    await this.clickElement(addButton);
     this.log("info", `Clicked add-to-cart for "${productName}"`);
 
     // Wait a moment for the action to complete
-    await this.sleep(1000);
+    await this.sleep(2000);
 
     // Mark as completed
     this.updateItemState(index, "completed", `Added "${productName}" to cart`);
@@ -223,6 +224,44 @@ class HEBShoppingAgent {
       level,
       message,
     });
+  }
+
+  private async clickElement(element: HTMLElement): Promise<void> {
+    // Scroll element into view
+    element.scrollIntoView({ behavior: "smooth", block: "center" });
+    await this.sleep(300);
+
+    // Get element position for realistic coordinates
+    const rect = element.getBoundingClientRect();
+    const x = rect.left + rect.width / 2;
+    const y = rect.top + rect.height / 2;
+
+    // Create realistic mouse events
+    const mouseEventInit: MouseEventInit = {
+      bubbles: true,
+      cancelable: true,
+      view: window,
+      clientX: x,
+      clientY: y,
+    };
+
+    // Dispatch multiple events to simulate real user interaction
+    element.dispatchEvent(new MouseEvent("mouseover", mouseEventInit));
+    await this.sleep(50);
+
+    element.dispatchEvent(new MouseEvent("mousedown", mouseEventInit));
+    await this.sleep(50);
+
+    element.dispatchEvent(new MouseEvent("mouseup", mouseEventInit));
+    await this.sleep(50);
+
+    element.dispatchEvent(new MouseEvent("click", mouseEventInit));
+    await this.sleep(50);
+
+    // Also try the native click as a fallback
+    element.click();
+
+    this.log("info", `Performed realistic click on button: ${element.textContent?.trim()}`);
   }
 
   private sleep(ms: number): Promise<void> {

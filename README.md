@@ -35,16 +35,7 @@ A Chrome extension that automates your HEB grocery shopping. Simply paste your g
 
    This will create a `extension/dist` folder with the compiled extension.
 
-3. **Create extension icons (optional):**
-
-   The extension needs three icon files in `extension/icons/`:
-   - `icon16.png` (16x16 pixels)
-   - `icon48.png` (48x48 pixels)
-   - `icon128.png` (128x128 pixels)
-
-   You can create simple placeholder icons or use your own. See `extension/icons/README.md` for details.
-
-4. **Load the extension in Chrome:**
+3. **Load the extension in Chrome:**
 
    - Open Chrome and go to `chrome://extensions/`
    - Enable "Developer mode" (toggle in the top right)

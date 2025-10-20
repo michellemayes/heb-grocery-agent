@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512">
+  <!-- Red pill with centered HEB -->
+  <rect x="64" y="156" width="384" height="200" rx="100" ry="100" fill="#E31837"/>
+  <text x="256" y="286" text-anchor="middle" font-family="DejaVu Sans, Arial, Helvetica, sans-serif"
+        font-size="120" font-weight="800" fill="#ffffff" letter-spacing="4">HEB</text>
+  <!-- Green plus badge with white ring -->
+  <g transform="translate(352,96)">
+    <circle cx="96" cy="96" r="64" fill="#16A34A" />
+    <circle cx="96" cy="96" r="68" fill="none" stroke="#ffffff" stroke-width="8" />
+    <rect x="92" y="56" width="8" height="80" rx="4" ry="4" fill="#ffffff"/>
+    <rect x="56" y="92" width="80" height="8" rx="4" ry="4" fill="#ffffff"/>
+  </g>
+</svg>

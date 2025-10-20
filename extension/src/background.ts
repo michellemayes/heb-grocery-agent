@@ -81,14 +81,30 @@ function handleStartShopping(shoppingListText: string) {
   broadcastStateUpdate();
 
   // Find or create HEB tab
-  chrome.tabs.query({ url: "https://www.heb.com/*" }, (tabs) => {
+  chrome.tabs.query({ url: "https://www.heb.com/*" }, async (tabs) => {
     if (tabs.length > 0 && tabs[0].id) {
       // Use existing tab
-      chrome.tabs.update(tabs[0].id, { active: true }, () => {
-        sendMessageToTab(tabs[0].id!, {
-          type: "START_SHOPPING",
-          shoppingList: shoppingListText,
-        });
+      const tabId = tabs[0].id;
+      chrome.tabs.update(tabId, { active: true }, async () => {
+        // Ensure content script is injected (in case extension was just reloaded)
+        try {
+          await chrome.scripting.executeScript({
+            target: { tabId },
+            files: ["content-script.js"],
+          });
+          addLog("info", "Content script injected into existing tab");
+        } catch (error) {
+          // Content script might already be injected, that's fine
+          console.log("Content script injection skipped (may already exist)");
+        }
+
+        // Wait a moment for content script to initialize
+        setTimeout(() => {
+          sendMessageToTab(tabId, {
+            type: "START_SHOPPING",
+            shoppingList: shoppingListText,
+          });
+        }, 500);
       });
     } else {
       // Create new tab
@@ -101,10 +117,13 @@ function handleStartShopping(shoppingListText: string) {
           ) {
             if (tabId === tab.id && changeInfo.status === "complete") {
               chrome.tabs.onUpdated.removeListener(listener);
-              sendMessageToTab(tab.id!, {
-                type: "START_SHOPPING",
-                shoppingList: shoppingListText,
-              });
+              // Wait a moment for content script to initialize
+              setTimeout(() => {
+                sendMessageToTab(tab.id!, {
+                  type: "START_SHOPPING",
+                  shoppingList: shoppingListText,
+                });
+              }, 500);
             }
           });
         }
@@ -192,11 +211,28 @@ function broadcastStateUpdate() {
   });
 }
 
-function sendMessageToTab(tabId: number, message: ExtensionMessage) {
-  chrome.tabs.sendMessage(tabId, message).catch((error) => {
-    console.error("Failed to send message to tab:", error);
-    addLog("error", "Failed to communicate with HEB.com tab");
-  });
+async function sendMessageToTab(
+  tabId: number,
+  message: ExtensionMessage,
+  retries = 3
+) {
+  for (let i = 0; i < retries; i++) {
+    try {
+      await chrome.tabs.sendMessage(tabId, message);
+      addLog("info", "Successfully sent message to HEB.com tab");
+      return;
+    } catch (error) {
+      console.error(`Failed to send message to tab (attempt ${i + 1}/${retries}):`, error);
+      if (i < retries - 1) {
+        // Wait before retrying
+        await new Promise((resolve) => setTimeout(resolve, 1000));
+      }
+    }
+  }
+  
+  addLog("error", "Failed to communicate with HEB.com tab. Please refresh the HEB.com page and try again.");
+  shoppingState.isRunning = false;
+  broadcastStateUpdate();
 }
 
 // Load saved state on startup
