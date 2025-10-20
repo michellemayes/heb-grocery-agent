@@ -7,7 +7,6 @@
     "extension"
   ],
   "scripts": {
-    "install": "npm install --workspace extension",
     "build": "npm run build --workspace extension",
     "dev": "npm run dev --workspace extension",
     "clean": "rm -rf extension/dist"
