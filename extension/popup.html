@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>HEB Grocery Agent</title>
+    <link rel="stylesheet" href="popup.css" />
+  </head>
+  <body>
+    <div class="container">
+      <header>
+        <h1>🛒 HEB Grocery Agent</h1>
+        <p class="subtitle">
+          Paste your grocery list below and let the agent shop for you
+        </p>
+      </header>
+
+      <section class="section">
+        <div class="section-header">
+          <h2>Shopping List</h2>
+          <button id="loadExampleBtn" class="btn-secondary">
+            Load Example
+          </button>
+        </div>
+        <textarea
+          id="shoppingListInput"
+          rows="10"
+          placeholder="Paste or type your grocery list...
+
+Example:
+[Produce]
+1 large Sweet Onion (finely chopped)
+1 cup Carrots
+
+[Dairy]
+1 cup Milk"
+        ></textarea>
+      </section>
+
+      <section class="controls">
+        <div class="status-badge" id="statusBadge">Status: Idle</div>
+        <div class="button-group">
+          <button id="cancelBtn" class="btn-secondary" disabled>Cancel</button>
+          <button id="startBtn" class="btn-primary">Start Shopping</button>
+        </div>
+      </section>
+
+      <section class="section">
+        <div class="section-header">
+          <h2>Items</h2>
+          <span id="itemCount" class="count-badge">0 items</span>
+        </div>
+        <div id="itemsList" class="items-list">
+          <div class="empty-state">Items will appear once you start shopping</div>
+        </div>
+      </section>
+
+      <section class="section">
+        <div class="section-header">
+          <h2>Log</h2>
+          <button id="clearLogsBtn" class="btn-text">Clear</button>
+        </div>
+        <div id="logsList" class="logs-list">
+          <div class="empty-state">Logs will appear here</div>
+        </div>
+      </section>
+    </div>
+
+    <script src="popup.js"></script>
+  </body>
+</html>
+

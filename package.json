@@ -1,33 +1,24 @@
 {
   "name": "heb-grocery-agent",
-  "version": "0.1.0",
+  "version": "1.0.0",
   "private": true,
-  "description": "Local agent that automates HEB grocery shopping from free-form lists.",
+  "description": "Chrome extension to automate HEB grocery shopping from free-form lists.",
   "workspaces": [
-    "backend",
-    "frontend",
-    "shared"
+    "extension"
   ],
   "scripts": {
-    "dev": "concurrently -k -n backend,frontend \"npm run dev --workspace backend\" \"npm run dev --workspace frontend\"",
-    "dev:backend": "npm run dev --workspace backend",
-    "dev:frontend": "npm run dev --workspace frontend",
-    "format": "npm run format --workspace backend && npm run format --workspace frontend",
-    "lint": "npm run lint --workspace backend && npm run lint --workspace frontend",
-    "build": "npm run build --workspace shared && npm run build --workspace backend && npm run build --workspace frontend"
+    "install": "npm install --workspace extension",
+    "build": "npm run build --workspace extension",
+    "dev": "npm run dev --workspace extension",
+    "clean": "rm -rf extension/dist"
   },
   "keywords": [
     "heb",
+    "chrome-extension",
     "automation",
-    "playwright",
-    "agent"
+    "grocery"
   ],
   "author": "",
   "license": "MIT",
-  "directories": {
-    "doc": "docs"
-  },
-  "devDependencies": {
-    "concurrently": "^8.2.2"
-  }
+  "devDependencies": {}
 }

@@ -1,64 +1,203 @@
-# HEB Grocery Agent
+# HEB Grocery Agent - Chrome Extension
 
-**Note:** This was a dead end because HEB immediately blocked my playwright browser tab.
+A Chrome extension that automates your HEB grocery shopping. Simply paste your grocery list, and the extension will search for items and add them to your cart on HEB.com.
 
+## Features
 
-Local-first agent that reads free-form grocery lists, parses them into structured items, and drives a live Playwright-controlled browser session to shop on HEB.com for you. The app shows real-time progress in a React dashboard while you watch the automation add items to your cart.
+- 📝 **Free-form list parsing** - Supports section headers (e.g., `[Produce]`), quantities (`1/2 cup`, `2 lbs`), and notes (`(finely chopped)`)
+- 🛒 **Automated shopping** - Searches for items and adds them to your cart automatically
+- 📊 **Real-time progress** - Watch the extension work with live status updates
+- 🎯 **Easy to use** - Clean popup interface with one-click shopping
 
-## Prerequisites
+## Installation
 
-- Node.js 18+ (tested with npm 11+)
-- npm workspaces enabled (default in npm 7+)
-- Playwright browser binaries (`npx playwright install chromium`)
+### Prerequisites
 
-## Quick Start
+- Node.js 18+ and npm
+- Google Chrome browser
+- An HEB.com account
 
-```bash
-# Install root + all workspace deps (frontend/backend/shared)
-npm install
+### Build the Extension
 
-# Download the Chromium binary used by Playwright
-npx playwright install chromium
+1. **Clone and install dependencies:**
 
-# Build shared types + backend + frontend bundles (optional for development, useful for verification)
-npm run build
+   ```bash
+   git clone <repository-url>
+   cd heb-grocery-agent
+   npm install
+   ```
 
-# Start the backend and frontend sandboxes (runs both in watch mode)
-npm run dev
+2. **Build the extension:**
+
+   ```bash
+   npm run build
+   ```
+
+   This will create a `extension/dist` folder with the compiled extension.
+
+3. **Create extension icons (optional):**
+
+   The extension needs three icon files in `extension/icons/`:
+   - `icon16.png` (16x16 pixels)
+   - `icon48.png` (48x48 pixels)
+   - `icon128.png` (128x128 pixels)
+
+   You can create simple placeholder icons or use your own. See `extension/icons/README.md` for details.
+
+4. **Load the extension in Chrome:**
+
+   - Open Chrome and go to `chrome://extensions/`
+   - Enable "Developer mode" (toggle in the top right)
+   - Click "Load unpacked"
+   - Select the `extension/dist` folder
+   - The HEB Grocery Agent extension should now appear in your extensions list
+
+## Usage
+
+1. **Open HEB.com:**
+   - Navigate to https://www.heb.com
+   - Sign in to your account
+   - Set your preferred store and delivery/pickup options
+
+2. **Prepare your shopping list:**
+   - Click the extension icon in your Chrome toolbar
+   - Paste or type your grocery list in the popup
+   - The extension supports various formats:
+
+   ```
+   [Produce]
+   1 large Sweet Onion (finely chopped)
+   2 cups Carrots (shredded)
+   
+   [Dairy]
+   1 cup Milk
+   2 lbs Butter
+   
+   [Other]
+   Eggs
+   Bread
+   ```
+
+3. **Start shopping:**
+   - Click "Start Shopping" in the popup
+   - The extension will navigate through HEB.com, search for each item, and add them to your cart
+   - Watch the progress in real-time through the popup interface
+   - You can cancel the run at any time by clicking "Cancel"
+
+4. **Review and checkout:**
+   - Once the shopping run completes, review your cart on HEB.com
+   - Remove any incorrect items or adjust quantities
+   - Proceed to checkout as normal
+
+## Development
+
+### Project Structure
+
+```
+extension/
+├── manifest.json          # Chrome extension manifest
+├── popup.html            # Extension popup UI
+├── popup.css             # Popup styles
+├── src/
+│   ├── popup.ts          # Popup logic
+│   ├── background.ts     # Service worker (coordinates shopping)
+│   ├── content-script.ts # Interacts with HEB.com pages
+│   ├── listParser.ts     # Parses grocery lists
+│   └── types.ts          # TypeScript types
+└── icons/                # Extension icons
 ```
 
-- Frontend: http://localhost:5173
-- Backend API & Socket.IO: http://localhost:4000
-- If you browse to `http://localhost:4000` directly you will see `Cannot GET /`; that port is only for the API/Socket.IO. Use the Vite dev server (`http://localhost:5173`) for the UI.
+### Development Commands
 
-### Development workflows
+- `npm run dev` - Build and watch for changes
+- `npm run build` - Build the extension for production
+- `npm run clean` - Clean build artifacts
 
-- `npm run dev:backend` — run just the Express/Playwright server with hot reload (tsx watch).
-- `npm run dev:frontend` — run the Vite dev server.
-- `npm run build` — build shared types, backend, and frontend for production.
-- `npm run format` / `npm run lint` — run formatting/linting (backend + frontend). You can also run them per workspace (`npm run lint --workspace backend`).
-- If you previously ran `npm install --workspaces` and see `concurrently: command not found`, re-run `npm install` to pull in the root toolchain dependencies.
+### How It Works
 
-## Using the Agent
+1. **List Parsing**: The extension parses your free-form grocery list into structured items with names, quantities, units, and notes
+2. **Background Coordination**: A service worker manages the shopping state and coordinates between the popup and content script
+3. **Content Script**: Injected into HEB.com pages, it performs the actual automation:
+   - Searches for each item
+   - Finds product cards on search results
+   - Clicks "Add to Cart" buttons
+4. **Real-time Updates**: Progress is communicated back to the popup for live status display
 
-1. Start `npm run dev` (or run backend/front separately).
-2. The backend now pre-launches the Playwright Chromium window. Take a moment to sign into HEB.com manually, set your store / fulfillment preferences, and keep the browser open before triggering a run.
-3. Paste any grocery list into the UI (supports section headers like `[Produce]`, bullets, numbered lists, and quantities such as `1/2 cup`).
-4. Click **Start Shopping**. The dashboard shows parsed items and live logs while the browser performs searches and clicks **Add to Cart**.
-5. Use **Cancel Run** if you need to take over manually.
+## List Format
 
-## Architecture
+The parser is flexible and supports multiple formats:
 
-- **Frontend (React + Vite)** — Collects the list, visualizes parsed items and state badges, and streams log events via Socket.IO.
-- **Backend (Express + Socket.IO + Playwright Extra)** — Parses input, orchestrates the shopping workflow, and controls a headed Chromium instance (with basic stealth tweaks applied) so the user can monitor actions.
-- **Shared package** — TypeScript definitions for grocery items and event payloads shared between client/server.
+### Section Headers
+```
+[Produce]
+[Dairy]
+[Canned Goods & Soups]
+```
 
-See `docs/architecture.md` for a deeper breakdown of modules and data flow.
+### Quantities and Units
+```
+1 cup Milk
+2 lbs Chicken
+1/2 cup Butter
+1 1/2 cups Sugar
+```
 
-## Limitations & Next Steps
+Supported units: cup, tsp, tbsp, oz, lb, g, kg, bag, can, pkg, bottle, count
 
-- Product selection currently picks the first available search result. More sophisticated ranking and substitution logic can be layered on.
-- HEB may display unexpected modals (age verification, substitutions, etc.). The agent surfaces errors in the log, but additional handlers may be needed.
-- Authentication/location must be handled manually by the user before kicking off a run.
-- Some stealth-style tweaks (masking `navigator.webdriver`, etc.) are applied to reduce—but not eliminate—bot detection. Continue to respect HEB's Terms of Service and be prepared for manual fallback if the session is challenged.
-- Automated tests are not included yet; consider adding Playwright fixtures to simulate the flow against a mocked storefront.
+### Bullets and Numbering
+```
+- Eggs
+* Bread
+• Cheese
+1. Milk
+2. Butter
+```
+
+### Notes
+```
+1 large Sweet Onion (finely chopped)
+Chicken (rotisserie)
+```
+
+## Limitations
+
+- **Product selection**: The extension currently selects the first available search result. You may need to adjust items in your cart.
+- **Bot detection**: HEB.com may occasionally challenge automated sessions. The extension works directly in your browser, so it's less likely to be blocked than headless automation.
+- **Manual setup required**: You must be signed in and have your store/preferences set before running the extension.
+- **Error handling**: Unexpected modals (age verification, substitutions) may cause the automation to fail. Check the logs and manually intervene if needed.
+
+## Troubleshooting
+
+**Extension doesn't load:**
+- Make sure you built the extension (`npm run build`)
+- Check that you're loading the `extension/dist` folder, not the `extension` folder
+- Ensure icons are present in `extension/dist/icons/`
+
+**Shopping doesn't start:**
+- Make sure you're on HEB.com when you click "Start Shopping"
+- Check that you're signed in to your HEB account
+- Look at the logs in the popup for error messages
+
+**Items aren't being added:**
+- HEB.com's page structure may have changed
+- Check the browser console (F12) for errors
+- The extension may need updates to match new selectors
+
+**Extension is too fast/slow:**
+- Adjust the delay values in `content-script.ts` if needed
+- The default includes small delays between items to avoid overwhelming the site
+
+## Privacy & Terms
+
+- This extension operates entirely in your browser and doesn't send data to any external servers
+- All shopping is performed using your own HEB.com session
+- Use this extension responsibly and in accordance with HEB's Terms of Service
+- The extension is provided as-is with no warranties
+
+## License
+
+MIT
+
+---
+
+**Note**: This is a personal automation tool. HEB may update their website at any time, which could break the extension. Use at your own discretion and always review your cart before checkout.
