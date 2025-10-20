@@ -39,6 +39,7 @@ export interface LogEntry {
 export interface StartShoppingMessage {
   type: "START_SHOPPING";
   shoppingList: string;
+  hebBrandOnly?: boolean;
 }
 
 export interface CancelShoppingMessage {

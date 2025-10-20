@@ -20,7 +20,7 @@ let shoppingState: ShoppingState = {
 chrome.runtime.onMessage.addListener(
   (message: ExtensionMessage, sender, sendResponse) => {
     if (message.type === "START_SHOPPING") {
-      handleStartShopping(message.shoppingList);
+      handleStartShopping(message.shoppingList, message.hebBrandOnly);
       sendResponse({ success: true });
     } else if (message.type === "CANCEL_SHOPPING") {
       handleCancelShopping();
@@ -57,7 +57,7 @@ chrome.runtime.onConnect.addListener((port) => {
   }
 });
 
-function handleStartShopping(shoppingListText: string) {
+function handleStartShopping(shoppingListText: string, hebBrandOnly = false) {
   if (shoppingState.isRunning) {
     addLog("error", "Shopping run already in progress");
     return;
@@ -78,6 +78,9 @@ function handleStartShopping(shoppingListText: string) {
   };
 
   addLog("info", `Starting shopping run with ${items.length} items`);
+  if (hebBrandOnly) {
+    addLog("info", "HEB brand-only filter enabled");
+  }
   broadcastStateUpdate();
 
   // Find or create HEB tab
@@ -103,6 +106,7 @@ function handleStartShopping(shoppingListText: string) {
           sendMessageToTab(tabId, {
             type: "START_SHOPPING",
             shoppingList: shoppingListText,
+            hebBrandOnly,
           });
         }, 500);
       });
@@ -122,6 +126,7 @@ function handleStartShopping(shoppingListText: string) {
                 sendMessageToTab(tab.id!, {
                   type: "START_SHOPPING",
                   shoppingList: shoppingListText,
+                  hebBrandOnly,
                 });
               }, 500);
             }

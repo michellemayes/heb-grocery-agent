@@ -25,6 +25,7 @@ const EXAMPLE_LIST = `Groceries
 
 class PopupUI {
   private shoppingListInput: HTMLTextAreaElement;
+  private hebBrandOnlyCheckbox: HTMLInputElement;
   private startBtn: HTMLButtonElement;
   private cancelBtn: HTMLButtonElement;
   private loadExampleBtn: HTMLButtonElement;
@@ -47,6 +48,9 @@ class PopupUI {
     this.shoppingListInput = document.getElementById(
       "shoppingListInput"
     ) as HTMLTextAreaElement;
+    this.hebBrandOnlyCheckbox = document.getElementById(
+      "hebBrandOnlyCheckbox"
+    ) as HTMLInputElement;
     this.startBtn = document.getElementById("startBtn") as HTMLButtonElement;
     this.cancelBtn = document.getElementById("cancelBtn") as HTMLButtonElement;
     this.loadExampleBtn = document.getElementById(
@@ -62,6 +66,7 @@ class PopupUI {
 
     this.setupEventListeners();
     this.connectToBackground();
+    this.loadPreferences();
   }
 
   private setupEventListeners() {
@@ -102,10 +107,16 @@ class PopupUI {
       return;
     }
 
+    const hebBrandOnly = this.hebBrandOnlyCheckbox.checked;
+
+    // Save preference
+    await chrome.storage.local.set({ hebBrandOnly });
+
     try {
       await chrome.runtime.sendMessage({
         type: "START_SHOPPING",
         shoppingList,
+        hebBrandOnly,
       });
     } catch (error) {
       console.error("Failed to start shopping:", error);
@@ -130,6 +141,13 @@ class PopupUI {
   private handleClearLogs() {
     this.currentState.logs = [];
     this.updateUI();
+  }
+
+  private async loadPreferences() {
+    const result = await chrome.storage.local.get("hebBrandOnly");
+    if (result.hebBrandOnly !== undefined) {
+      this.hebBrandOnlyCheckbox.checked = result.hebBrandOnly;
+    }
   }
 
   private updateUI() {
@@ -162,6 +180,7 @@ class PopupUI {
     this.startBtn.disabled = isRunning;
     this.cancelBtn.disabled = !isRunning;
     this.shoppingListInput.disabled = isRunning;
+    this.hebBrandOnlyCheckbox.disabled = isRunning;
     this.loadExampleBtn.disabled = isRunning;
   }
 

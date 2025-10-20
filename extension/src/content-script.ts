@@ -7,6 +7,9 @@ import type {
 
 // Product card selectors for HEB.com
 const PRODUCT_CARD_SELECTORS = [
+  "[data-qe-id='productCard']",
+  "[data-component='product-card']",
+  "[data-testid='productCard']",
   "[data-qa='product-card']",
   "[data-automation-id='product-card']",
   "[data-test='product-card']",
@@ -15,19 +18,29 @@ const PRODUCT_CARD_SELECTORS = [
   ".product-card",
 ];
 
+interface ContentScriptState {
+  isRunning: boolean;
+  shoppingListText: string;
+  items: GroceryListItem[];
+  currentItemIndex: number;
+  currentStep: "searching" | "processing" | "done";
+  hebBrandOnly: boolean;
+}
+
 class HEBShoppingAgent {
-  private isRunning = false;
-  private currentAbortController: AbortController | null = null;
+  private state: ContentScriptState | null = null;
 
   constructor() {
     this.setupMessageListener();
+    // Check if we need to resume after a page load
+    this.checkAndResume();
   }
 
   private setupMessageListener() {
     chrome.runtime.onMessage.addListener(
       (message: ExtensionMessage, _sender, sendResponse) => {
         if (message.type === "START_SHOPPING") {
-          this.handleStartShopping(message.shoppingList);
+          this.handleStartShopping(message.shoppingList, message.hebBrandOnly);
           sendResponse({ success: true });
         } else if (message.type === "CANCEL_SHOPPING") {
           this.handleCancelShopping();
@@ -38,14 +51,36 @@ class HEBShoppingAgent {
     );
   }
 
-  private async handleStartShopping(shoppingListText: string) {
-    if (this.isRunning) {
+  private async checkAndResume() {
+    // Check if there's a shopping run to resume
+    const result = await chrome.storage.local.get("contentScriptState");
+    if (result.contentScriptState) {
+      this.state = result.contentScriptState;
+      this.log("info", `Resuming shopping run: item ${this.state.currentItemIndex + 1}/${this.state.items.length}`);
+      this.log("info", `Current URL: ${window.location.href}`);
+      
+      if (this.state.currentStep === "processing") {
+        // Wait for DOM to be ready
+        if (document.readyState === "loading") {
+          await new Promise<void>((resolve) => {
+            document.addEventListener("DOMContentLoaded", () => resolve(), { once: true });
+          });
+        }
+        
+        // Additional delay to ensure page is rendered
+        await this.sleep(1500);
+        
+        // We're on the search results page, process the item
+        await this.processCurrentItem();
+      }
+    }
+  }
+
+  private async handleStartShopping(shoppingListText: string, hebBrandOnly = false) {
+    if (this.state?.isRunning) {
       this.log("error", "Shopping run already in progress");
       return;
     }
-
-    this.isRunning = true;
-    this.currentAbortController = new AbortController();
 
     try {
       // Import and parse the list
@@ -53,95 +88,147 @@ class HEBShoppingAgent {
       const items = parseShoppingList(shoppingListText);
 
       this.log("info", `Parsed ${items.length} items from the list`);
-
-      // Process each item
-      for (let i = 0; i < items.length; i++) {
-        if (this.currentAbortController.signal.aborted) {
-          this.log("warn", "Shopping run cancelled");
-          break;
-        }
-
-        const item = items[i];
-        try {
-          await this.processItem(item, i);
-        } catch (error) {
-          const message =
-            error instanceof Error ? error.message : "Unknown error";
-          this.updateItemState(i, "error", undefined, message);
-          this.log("error", `Failed to process "${item.name}": ${message}`);
-        }
-
-        // Small delay between items
-        await this.sleep(1500);
+      if (hebBrandOnly) {
+        this.log("info", "HEB brand-only filter enabled");
       }
 
-      if (!this.currentAbortController.signal.aborted) {
-        this.log("info", "Shopping run completed successfully");
-      }
+      // Initialize state
+      this.state = {
+        isRunning: true,
+        shoppingListText,
+        items,
+        currentItemIndex: 0,
+        currentStep: "searching",
+        hebBrandOnly,
+      };
+
+      // Save state
+      await this.saveState();
+
+      // Start processing first item
+      await this.navigateToSearch();
     } catch (error) {
       const message = error instanceof Error ? error.message : "Unknown error";
       this.log("error", `Shopping run failed: ${message}`);
-    } finally {
-      this.isRunning = false;
-      this.currentAbortController = null;
+      await this.clearState();
     }
   }
 
-  private handleCancelShopping() {
-    if (this.currentAbortController) {
-      this.currentAbortController.abort();
-      this.log("warn", "Cancellation requested");
+  private async handleCancelShopping() {
+    this.log("warn", "Cancellation requested");
+    await this.clearState();
+  }
+
+  private async saveState() {
+    if (this.state) {
+      await chrome.storage.local.set({ contentScriptState: this.state });
     }
   }
 
-  private async processItem(item: GroceryListItem, index: number) {
-    // Update state to searching
-    this.updateItemState(index, "searching", `Searching for "${item.name}"`);
+  private async clearState() {
+    this.state = null;
+    await chrome.storage.local.remove("contentScriptState");
+  }
+
+  private async navigateToSearch() {
+    if (!this.state || this.state.currentItemIndex >= this.state.items.length) {
+      this.log("info", "Shopping run completed successfully");
+      await this.clearState();
+      return;
+    }
+
+    const item = this.state.items[this.state.currentItemIndex];
+    this.updateItemState(this.state.currentItemIndex, "searching", `Searching for "${item.name}"`);
     this.log("info", `Searching for "${item.name}"`);
+
+    // Update state to processing before navigation
+    this.state.currentStep = "processing";
+    await this.saveState();
 
     // Navigate to search page
     const query = encodeURIComponent(item.name);
-    const searchUrl = `https://www.heb.com/search/?q=${query}`;
+    let searchUrl = `https://www.heb.com/search/?q=${query}`;
+    
+    // Add HEB brand filter if enabled
+    if (this.state.hebBrandOnly) {
+      searchUrl += `&filter=brand%3AH-E-B`;
+    }
+    
     window.location.href = searchUrl;
+  }
 
-    // Wait for page to load
-    await this.waitForPageLoad();
+  private async processCurrentItem() {
+    if (!this.state) return;
 
-    // Wait for product grid
-    this.updateItemState(index, "evaluating", "Looking for products");
-    await this.waitForProductGrid();
+    const index = this.state.currentItemIndex;
+    const item = this.state.items[index];
 
-    // Find first product
-    const productCard = await this.findFirstProductCard();
-    if (!productCard) {
-      throw new Error("No products found");
+    try {
+      // Wait for product grid
+      this.updateItemState(index, "evaluating", "Looking for products");
+      await this.waitForProductGrid();
+      this.log("info", "Product grid loaded");
+
+      // Find first product
+      const productCard = await this.findFirstProductCard();
+      if (!productCard) {
+        throw new Error("No products found");
+      }
+      this.log("info", "Found first product card");
+
+      // Get product name
+      const productName = this.getProductName(productCard) || item.name;
+      this.log("info", `Found product: "${productName}"`);
+
+      // Find and click add button
+      this.updateItemState(
+        index,
+        "adding-to-cart",
+        `Adding "${productName}" to cart`
+      );
+
+      const addButton = this.findAddButton(productCard);
+      if (!addButton) {
+        // Log the product card HTML for debugging
+        this.log("error", `Product card HTML: ${productCard.outerHTML.substring(0, 500)}`);
+        throw new Error("Could not find add-to-cart button");
+      }
+
+      this.log("info", `Found button: ${addButton.outerHTML.substring(0, 200)}`);
+
+      // Use a more realistic click simulation
+      await this.clickElement(addButton);
+      this.log("info", `Clicked add-to-cart for "${productName}"`);
+
+      // Wait a moment for the action to complete
+      await this.sleep(2000);
+
+      // Mark as completed
+      this.updateItemState(index, "completed", `Added "${productName}" to cart`);
+
+      // Move to next item
+      this.state.currentItemIndex++;
+      this.state.currentStep = "searching";
+      await this.saveState();
+
+      // Small delay before next item
+      await this.sleep(1500);
+
+      // Process next item
+      await this.navigateToSearch();
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Unknown error";
+      this.updateItemState(index, "error", undefined, message);
+      this.log("error", `Failed to process "${item.name}": ${message}`);
+
+      // Move to next item even after error
+      this.state.currentItemIndex++;
+      this.state.currentStep = "searching";
+      await this.saveState();
+
+      await this.sleep(1500);
+      await this.navigateToSearch();
     }
-
-    // Get product name
-    const productName = this.getProductName(productCard) || item.name;
-    this.log("info", `Found product: "${productName}"`);
-
-    // Find and click add button
-    this.updateItemState(
-      index,
-      "adding-to-cart",
-      `Adding "${productName}" to cart`
-    );
-
-    const addButton = this.findAddButton(productCard);
-    if (!addButton) {
-      throw new Error("Could not find add-to-cart button");
-    }
-
-    // Use a more realistic click simulation
-    await this.clickElement(addButton);
-    this.log("info", `Clicked add-to-cart for "${productName}"`);
-
-    // Wait a moment for the action to complete
-    await this.sleep(2000);
-
-    // Mark as completed
-    this.updateItemState(index, "completed", `Added "${productName}" to cart`);
   }
 
   private async waitForPageLoad(): Promise<void> {
@@ -155,19 +242,64 @@ class HEBShoppingAgent {
   }
 
   private async waitForProductGrid(): Promise<void> {
-    const maxAttempts = 40; // 8 seconds total
+    // First, wait for page to be interactive
+    if (document.readyState !== "complete") {
+      await new Promise<void>((resolve) => {
+        if (document.readyState === "complete") {
+          resolve();
+        } else {
+          window.addEventListener("load", () => resolve(), { once: true });
+        }
+      });
+    }
+
+    // Give the page a moment to render after load
+    await this.sleep(1000);
+
+    const maxAttempts = 60; // 12 seconds total
     const delay = 200;
 
+    this.log("info", "Waiting for product grid to appear...");
+
     for (let i = 0; i < maxAttempts; i++) {
+      // Log progress every 2 seconds
+      if (i % 10 === 0 && i > 0) {
+        this.log("info", `Still waiting for products... (${i * delay}ms elapsed)`);
+      }
+
       for (const selector of PRODUCT_CARD_SELECTORS) {
-        const element = document.querySelector(selector);
-        if (element) {
+        const elements = document.querySelectorAll(selector);
+        if (elements.length > 0) {
+          this.log("info", `Found ${elements.length} product cards using selector: ${selector}`);
           return;
         }
       }
       await this.sleep(delay);
     }
 
+    // Last resort: log what we can see on the page for debugging
+    this.log("error", `Current URL: ${window.location.href}`);
+    this.log("error", `Page title: ${document.title}`);
+    this.log("error", `Body classes: ${document.body.className}`);
+    
+    // Try to find ANY elements that might be product-related
+    const possibleProductElements = [
+      ...Array.from(document.querySelectorAll('[class*="product"]')),
+      ...Array.from(document.querySelectorAll('[class*="Product"]')),
+      ...Array.from(document.querySelectorAll('[data-testid*="product"]')),
+      ...Array.from(document.querySelectorAll('[data-test*="product"]')),
+    ];
+    
+    if (possibleProductElements.length > 0) {
+      this.log("info", `Found ${possibleProductElements.length} elements with "product" in class/data attrs`);
+      const firstEl = possibleProductElements[0] as HTMLElement;
+      this.log("info", `First element class: ${firstEl.className}`);
+      this.log("info", `First element tag: ${firstEl.tagName}`);
+      this.log("info", `Sample HTML: ${firstEl.outerHTML.substring(0, 300)}`);
+    } else {
+      this.log("error", "No elements found with 'product' in classes or data attributes");
+    }
+    
     throw new Error("Could not locate product results on the page");
   }
 
@@ -193,12 +325,44 @@ class HEBShoppingAgent {
   }
 
   private findAddButton(productCard: HTMLElement): HTMLButtonElement | null {
-    const buttons = productCard.querySelectorAll("button");
-    for (const button of buttons) {
-      if (/add/i.test(button.textContent || "")) {
+    // First, try HEB's specific data attribute
+    let button = productCard.querySelector<HTMLButtonElement>(
+      'button[data-qe-id="addToCart"]'
+    );
+    if (button) {
+      this.log("info", "Found add button using data-qe-id");
+      return button;
+    }
+
+    // Try other common selectors
+    const selectors = [
+      'button[data-qe-id*="add"]',
+      'button[aria-label*="Add"]',
+      'button[class*="addToCart"]',
+      'button[class*="AddToCart"]',
+    ];
+
+    for (const selector of selectors) {
+      button = productCard.querySelector<HTMLButtonElement>(selector);
+      if (button) {
+        this.log("info", `Found add button using selector: ${selector}`);
         return button;
       }
     }
+
+    // Fallback: search by text content
+    const buttons = productCard.querySelectorAll("button");
+    this.log("info", `Searching through ${buttons.length} buttons in product card`);
+    
+    for (const btn of buttons) {
+      const text = btn.textContent || "";
+      this.log("info", `Button text: "${text.trim().substring(0, 50)}"`);
+      if (/add.*cart/i.test(text)) {
+        this.log("info", "Found add button by text content");
+        return btn as HTMLButtonElement;
+      }
+    }
+
     return null;
   }
 
@@ -256,12 +420,8 @@ class HEBShoppingAgent {
     await this.sleep(50);
 
     element.dispatchEvent(new MouseEvent("click", mouseEventInit));
-    await this.sleep(50);
 
-    // Also try the native click as a fallback
-    element.click();
-
-    this.log("info", `Performed realistic click on button: ${element.textContent?.trim()}`);
+    this.log("info", `Performed click on button: ${element.textContent?.trim()}`);
   }
 
   private sleep(ms: number): Promise<void> {
