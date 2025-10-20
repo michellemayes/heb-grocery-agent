@@ -1,0 +1,16 @@
+# Node
+node_modules/
+pnpm-lock.yaml
+yarn.lock
+
+# Build outputs
+dist/
+frontend/dist/
+backend/dist/
+shared/dist/
+*.tsbuildinfo
+
+# Misc
+.DS_Store
+.env
+.env.*
