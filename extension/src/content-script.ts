@@ -66,7 +66,7 @@ class HEBShoppingAgent {
         }
         
         // Additional delay to ensure page is rendered
-        await this.sleep(1500);
+        await this.sleep(800);
         
         // We're on the search results page, process the item
         await this.processCurrentItem();
@@ -185,7 +185,7 @@ class HEBShoppingAgent {
       await this.clickElement(addButton);
 
       // Wait a moment for the action to complete
-      await this.sleep(2000);
+      await this.sleep(800);
 
       // Mark as completed
       this.updateItemState(index, "completed", `Added "${productName}" to cart`);
@@ -196,7 +196,7 @@ class HEBShoppingAgent {
       await this.saveState();
 
       // Small delay before next item
-      await this.sleep(1500);
+      await this.sleep(500);
 
       // Process next item
       await this.navigateToSearch();
@@ -210,7 +210,7 @@ class HEBShoppingAgent {
       this.state.currentStep = "searching";
       await this.saveState();
 
-      await this.sleep(1500);
+      await this.sleep(500);
       await this.navigateToSearch();
     }
   }
@@ -238,7 +238,7 @@ class HEBShoppingAgent {
     }
 
     // Give the page a moment to render after load
-    await this.sleep(1000);
+    await this.sleep(600);
 
     const maxAttempts = 60; // 12 seconds total
     const delay = 200;
@@ -341,7 +341,7 @@ class HEBShoppingAgent {
   private async clickElement(element: HTMLElement): Promise<void> {
     // Scroll element into view
     element.scrollIntoView({ behavior: "smooth", block: "center" });
-    await this.sleep(300);
+    await this.sleep(150);
 
     // Get element position for realistic coordinates
     const rect = element.getBoundingClientRect();

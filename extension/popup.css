@@ -138,7 +138,7 @@ textarea:disabled {
   align-items: center;
   gap: 12px;
   padding: 12px;
-  margin: 0 12px;
+  margin: 12px;
   background: white;
   border-radius: 8px;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
