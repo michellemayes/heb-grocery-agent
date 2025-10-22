@@ -246,9 +246,12 @@ All methods show a preview before applying changes. See [CLEANUP_FEATURES.md](CL
 
 ## Privacy & Terms
 
-- This extension operates entirely in your browser and doesn't send data to any external servers
-- All shopping is performed using your own HEB.com session
-- Use this extension responsibly and in accordance with HEB's Terms of Service
+- This extension operates entirely in your browser
+- All data is stored locally on your device
+- API keys (if used) are only sent to your chosen AI provider
+- No tracking, analytics, or data collection
+- See [PRIVACY.md](PRIVACY.md) for full privacy policy
+- Use responsibly and in accordance with HEB's Terms of Service
 - The extension is provided as-is with no warranties
 
 ## License
