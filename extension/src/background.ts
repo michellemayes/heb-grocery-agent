@@ -8,6 +8,13 @@ import type {
 } from "./types";
 import { parseShoppingList } from "./listParser";
 
+// Open side panel when extension icon is clicked
+chrome.action.onClicked.addListener((tab) => {
+  if (tab.id) {
+    chrome.sidePanel.open({ tabId: tab.id });
+  }
+});
+
 // Global shopping state
 let shoppingState: ShoppingState = {
   isRunning: false,
@@ -77,10 +84,7 @@ function handleStartShopping(shoppingListText: string, hebBrandOnly = false) {
     logs: [],
   };
 
-  addLog("info", `Starting shopping run with ${items.length} items`);
-  if (hebBrandOnly) {
-    addLog("info", "HEB brand-only filter enabled");
-  }
+  addLog("info", `Starting shopping with ${items.length} items`);
   broadcastStateUpdate();
 
   // Find or create HEB tab
@@ -95,7 +99,6 @@ function handleStartShopping(shoppingListText: string, hebBrandOnly = false) {
             target: { tabId },
             files: ["content-script.js"],
           });
-          addLog("info", "Content script injected into existing tab");
         } catch (error) {
           // Content script might already be injected, that's fine
           console.log("Content script injection skipped (may already exist)");
@@ -224,7 +227,6 @@ async function sendMessageToTab(
   for (let i = 0; i < retries; i++) {
     try {
       await chrome.tabs.sendMessage(tabId, message);
-      addLog("info", "Successfully sent message to HEB.com tab");
       return;
     } catch (error) {
       console.error(`Failed to send message to tab (attempt ${i + 1}/${retries}):`, error);
@@ -235,7 +237,7 @@ async function sendMessageToTab(
     }
   }
   
-  addLog("error", "Failed to communicate with HEB.com tab. Please refresh the HEB.com page and try again.");
+  addLog("error", "Failed to communicate with HEB.com. Please refresh the page and try again.");
   shoppingState.isRunning = false;
   broadcastStateUpdate();
 }
@@ -247,7 +249,6 @@ chrome.storage.local.get("shoppingState", (result) => {
     // Don't resume running state after browser restart
     if (shoppingState.isRunning) {
       shoppingState.isRunning = false;
-      addLog("info", "Extension restarted. Previous run cancelled.");
     }
   }
 });
