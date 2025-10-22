@@ -6,13 +6,17 @@
   "scripts": {
     "build": "npm run clean && npm run build:ts && npm run copy:assets",
     "build:ts": "esbuild src/content-script.ts src/background.ts src/popup.ts --bundle --outdir=dist --format=esm --platform=browser --target=chrome96",
-    "copy:assets": "cp manifest.json dist/ && cp popup.html dist/ && cp popup.css dist/ && mkdir -p dist/icons && cp icons/*.png dist/icons/ 2>/dev/null || true",
+    "copy:assets": "cp manifest.json dist/ && cp popup.html dist/ && cp popup.css dist/ && mkdir -p dist/icons && cp icons/*.png dist/icons/ 2>/dev/null || true && cp icons/*.svg dist/icons/ 2>/dev/null || true",
     "clean": "rm -rf dist && mkdir -p dist",
     "watch": "npm run clean && npm run copy:assets && esbuild src/content-script.ts src/background.ts src/popup.ts --bundle --outdir=dist --format=esm --platform=browser --target=chrome96 --watch",
     "dev": "npm run watch"
   },
+  "dependencies": {
+    "string-similarity": "^4.0.4"
+  },
   "devDependencies": {
     "@types/chrome": "^0.0.268",
+    "@types/string-similarity": "^4.0.2",
     "esbuild": "^0.21.5",
     "typescript": "^5.4.5"
   }

@@ -72,3 +72,27 @@ export type ExtensionMessage =
   | ItemUpdateMessage
   | LogMessage;
 
+export type AIProvider = "none" | "openai" | "anthropic" | "groq";
+
+export interface CleanupSettings {
+  enabled: boolean;
+  provider: AIProvider;
+  apiKey: string;
+}
+
+export type CleanupChangeType = "fixed" | "removed" | "standardized" | "unchanged";
+
+export interface CleanupChange {
+  type: CleanupChangeType;
+  original: string;
+  cleaned: string;
+  reason?: string;
+}
+
+export interface CleanupDiff {
+  original: string[];
+  cleaned: string[];
+  changes: CleanupChange[];
+  method: "string-similarity" | "ai" | "none";
+}
+

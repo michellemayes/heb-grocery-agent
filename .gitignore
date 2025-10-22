@@ -14,3 +14,8 @@ shared/dist/
 .DS_Store
 .env
 .env.*
+
+SUBMISSION_CHECKLIST.md
+SCREENSHOT_GUIDE.md
+
+heb-grocery-agent-v1.0.0.zip

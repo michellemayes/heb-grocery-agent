@@ -2,22 +2,23 @@
   "manifest_version": 3,
   "name": "HEB Grocery Agent",
   "version": "1.0.0",
-  "description": "Automate your HEB grocery shopping with custom list input",
+  "description": "Automate your HEB grocery shopping with AI-powered list cleanup and smart automation. Save 70% of your shopping time.",
+  "author": "Michelle Mayes",
+  "homepage_url": "https://github.com/michellemayes/heb-grocery-agent",
   "permissions": [
     "activeTab",
     "storage",
-    "scripting"
+    "scripting",
+    "sidePanel"
   ],
   "host_permissions": [
     "https://www.heb.com/*"
   ],
   "action": {
-    "default_popup": "popup.html",
-    "default_icon": {
-      "16": "icons/icon16.png",
-      "48": "icons/icon48.png",
-      "128": "icons/icon128.png"
-    }
+    "default_title": "Open HEB Grocery Agent"
+  },
+  "side_panel": {
+    "default_path": "popup.html"
   },
   "icons": {
     "16": "icons/icon16.png",
