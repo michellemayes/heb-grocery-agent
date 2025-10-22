@@ -398,7 +398,7 @@ class PopupUI {
   }
 
   private updateItems() {
-    const { items } = this.currentState;
+    const { items, isRunning, currentItemIndex } = this.currentState;
 
     this.itemCount.textContent = `${items.length} items`;
 
@@ -412,9 +412,10 @@ class PopupUI {
       .map((itemState, index) => {
         const { item, state, detail, error } = itemState;
         const stateClass = `state-${state}`;
+        const isCurrentItem = isRunning && index === currentItemIndex;
 
         return `
-        <div class="item-card">
+        <div class="item-card ${isCurrentItem ? 'item-card-active' : ''}" data-item-index="${index}">
           <div class="item-header">
             <div class="item-name">${this.escapeHtml(item.name)}</div>
             <span class="state-badge ${stateClass}">${state.replace(/-/g, " ")}</span>
@@ -428,6 +429,21 @@ class PopupUI {
       `;
       })
       .join("");
+
+    // Auto-scroll to the current item being processed
+    if (isRunning && currentItemIndex >= 0 && currentItemIndex < items.length) {
+      // Use setTimeout to ensure DOM has updated
+      setTimeout(() => {
+        const currentCard = this.itemsList.querySelector(`[data-item-index="${currentItemIndex}"]`);
+        if (currentCard) {
+          currentCard.scrollIntoView({ 
+            behavior: "smooth", 
+            block: "center",
+            inline: "nearest"
+          });
+        }
+      }, 100);
+    }
   }
 
   private updateLogs() {
