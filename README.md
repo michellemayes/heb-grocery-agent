@@ -7,7 +7,7 @@ A Chrome extension that automates your HEB grocery shopping. Simply paste your g
 - 📝 **Free-form list parsing** - Supports section headers (e.g., `[Produce]`), quantities (`1/2 cup`, `2 lbs`), and notes (`(finely chopped)`)
 - ✨ **Smart list cleanup** - AI-powered or string-based typo fixing, name standardization, and duplicate removal
   - 🤖 **AI Options**: Groq (free), OpenAI (GPT-4), or Anthropic (Claude)
-  - 🔤 **String Matching**: Works offline with 1000+ grocery database
+  - 🔤 **String Matching**: Works without AI using a 1000+ item grocery database
   - 👀 **Preview Changes**: See before/after diff before applying
 - 🛒 **Automated shopping** - Searches for items and adds them to your cart automatically
 - 📊 **Real-time progress** - Watch the extension work with live status updates
