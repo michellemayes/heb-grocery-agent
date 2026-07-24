@@ -168,6 +168,7 @@ export const GROCERY_DATABASE = [
   "salt", "table salt", "sea salt", "kosher salt", "himalayan salt",
   "pepper", "black pepper", "white pepper", "peppercorn",
   "olive oil", "extra virgin olive oil", "vegetable oil", "canola oil", "coconut oil",
+  "sesame oil", "toasted sesame oil", "sesame seeds", "avocado oil", "peanut oil", "grapeseed oil",
   "cooking spray", "pam", "non-stick spray",
   "vinegar", "white vinegar", "apple cider vinegar", "balsamic vinegar", "red wine vinegar",
   "soy sauce", "tamari", "teriyaki sauce",
