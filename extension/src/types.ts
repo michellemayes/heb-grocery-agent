@@ -27,6 +27,8 @@ export interface ShoppingState {
   currentItemIndex: number;
   items: ItemState[];
   logs: LogEntry[];
+  /** Timestamp (ms) of the last state change, used to detect stalled runs. */
+  lastActivityAt?: number;
 }
 
 export interface LogEntry {
@@ -44,6 +46,10 @@ export interface StartShoppingMessage {
 
 export interface CancelShoppingMessage {
   type: "CANCEL_SHOPPING";
+}
+
+export interface ResetShoppingMessage {
+  type: "RESET_SHOPPING";
 }
 
 export interface StateUpdateMessage {
@@ -68,6 +74,7 @@ export interface LogMessage {
 export type ExtensionMessage =
   | StartShoppingMessage
   | CancelShoppingMessage
+  | ResetShoppingMessage
   | StateUpdateMessage
   | ItemUpdateMessage
   | LogMessage;

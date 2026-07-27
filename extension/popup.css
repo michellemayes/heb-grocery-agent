@@ -136,6 +136,7 @@ textarea:disabled {
   display: flex;
   justify-content: flex-start;
   align-items: center;
+  flex-wrap: wrap;
   gap: 12px;
   padding: 12px;
   margin: 12px;

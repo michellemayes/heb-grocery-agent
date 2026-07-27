@@ -30,6 +30,7 @@ class PopupUI {
   private hebBrandOnlyCheckbox: HTMLInputElement;
   private startBtn: HTMLButtonElement;
   private cancelBtn: HTMLButtonElement;
+  private resetBtn: HTMLButtonElement;
   private loadExampleBtn: HTMLButtonElement;
   private clearLogsBtn: HTMLButtonElement;
   private statusBadge: HTMLDivElement;
@@ -77,6 +78,7 @@ class PopupUI {
     ) as HTMLInputElement;
     this.startBtn = document.getElementById("startBtn") as HTMLButtonElement;
     this.cancelBtn = document.getElementById("cancelBtn") as HTMLButtonElement;
+    this.resetBtn = document.getElementById("resetBtn") as HTMLButtonElement;
     this.loadExampleBtn = document.getElementById(
       "loadExampleBtn"
     ) as HTMLButtonElement;
@@ -112,6 +114,7 @@ class PopupUI {
   private setupEventListeners() {
     this.startBtn.addEventListener("click", () => this.handleStart());
     this.cancelBtn.addEventListener("click", () => this.handleCancel());
+    this.resetBtn.addEventListener("click", () => this.handleReset());
     this.loadExampleBtn.addEventListener("click", () =>
       this.handleLoadExample()
     );
@@ -185,6 +188,24 @@ class PopupUI {
       });
     } catch (error) {
       console.error("Failed to cancel shopping:", error);
+    }
+  }
+
+  private async handleReset() {
+    try {
+      await chrome.runtime.sendMessage({
+        type: "RESET_SHOPPING",
+      });
+      // Optimistically clear the local view in case the service worker was idle.
+      this.currentState = {
+        isRunning: false,
+        currentItemIndex: 0,
+        items: [],
+        logs: [],
+      };
+      this.updateUI();
+    } catch (error) {
+      console.error("Failed to reset:", error);
     }
   }
 

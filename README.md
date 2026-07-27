@@ -229,6 +229,16 @@ All methods show a preview before applying changes. See [CLEANUP_FEATURES.md](CL
 - Groq free tier is recommended for most users
 - OpenAI requires prepaid credits or billing setup
 - String matching works offline if AI fails
+- **Note:** AI cleanup only runs when you click **Clean List** — it improves the
+  list before shopping, it does not run automatically during a shopping run.
+- After updating the extension, fully reload it from `chrome://extensions/` so
+  the new permissions (needed to reach the AI providers) take effect.
+
+**Extension stuck or won't start a new run:**
+- Click the **Reset** button in the side panel. It clears the agent's state and
+  is always available, even if a previous run got stuck (e.g. the HEB tab was
+  closed mid-run). You should no longer need to remove and re-install the
+  extension to recover.
 
 **Shopping doesn't start:**
 - Make sure you're on HEB.com when you click "Start Shopping"

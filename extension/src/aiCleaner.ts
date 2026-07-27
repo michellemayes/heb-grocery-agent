@@ -203,25 +203,38 @@ async function cleanWithGroq(listText: string, apiKey: string): Promise<string> 
  * Clean list using Anthropic API
  */
 async function cleanWithAnthropic(listText: string, apiKey: string): Promise<string> {
-  const response = await fetch(ANTHROPIC_API_URL, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "x-api-key": apiKey,
-      "anthropic-version": "2023-06-01",
-    },
-    body: JSON.stringify({
-      model: "claude-3-5-sonnet-20241022",
-      max_tokens: 2000,
-      temperature: 0.3,
-      messages: [
-        {
-          role: "user",
-          content: `${CLEANUP_PROMPT}\n\n${listText}`,
-        },
-      ],
-    }),
-  });
+  let response: Response;
+  try {
+    response = await fetch(ANTHROPIC_API_URL, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "x-api-key": apiKey,
+        "anthropic-version": "2023-06-01",
+        // Required for requests made directly from a browser/extension context.
+        // Without it the request is blocked by CORS before it ever reaches
+        // Anthropic, so the key appears "unused" on the dashboard.
+        "anthropic-dangerous-direct-browser-access": "true",
+      },
+      body: JSON.stringify({
+        model: "claude-3-5-sonnet-20241022",
+        max_tokens: 2000,
+        temperature: 0.3,
+        messages: [
+          {
+            role: "user",
+            content: `${CLEANUP_PROMPT}\n\n${listText}`,
+          },
+        ],
+      }),
+    });
+  } catch (error) {
+    throw new Error(
+      `Could not reach Anthropic. Check your network connection and that the extension has been reloaded after updating. (${
+        error instanceof Error ? error.message : "network error"
+      })`
+    );
+  }
 
   if (!response.ok) {
     const error = await response.json().catch(() => ({ error: { message: "Unknown error" } }));
@@ -401,6 +414,7 @@ export async function validateApiKey(provider: AIProvider, apiKey: string): Prom
           "Content-Type": "application/json",
           "x-api-key": apiKey,
           "anthropic-version": "2023-06-01",
+          "anthropic-dangerous-direct-browser-access": "true",
         },
         body: JSON.stringify({
           model: "claude-3-5-sonnet-20241022",

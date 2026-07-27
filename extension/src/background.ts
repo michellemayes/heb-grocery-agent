@@ -15,12 +15,17 @@ chrome.action.onClicked.addListener((tab) => {
   }
 });
 
+// A run is considered stalled if no progress has been reported for this long.
+// When that happens we let a new "Start" reclaim the run instead of refusing it.
+const STALE_RUN_MS = 90_000;
+
 // Global shopping state
 let shoppingState: ShoppingState = {
   isRunning: false,
   currentItemIndex: 0,
   items: [],
   logs: [],
+  lastActivityAt: Date.now(),
 };
 
 // Listen for messages from popup and content script
@@ -31,6 +36,9 @@ chrome.runtime.onMessage.addListener(
       sendResponse({ success: true });
     } else if (message.type === "CANCEL_SHOPPING") {
       handleCancelShopping();
+      sendResponse({ success: true });
+    } else if (message.type === "RESET_SHOPPING") {
+      handleResetShopping();
       sendResponse({ success: true });
     } else if (message.type === "ITEM_UPDATE") {
       handleItemUpdate(message);
@@ -66,8 +74,19 @@ chrome.runtime.onConnect.addListener((port) => {
 
 function handleStartShopping(shoppingListText: string, hebBrandOnly = false) {
   if (shoppingState.isRunning) {
-    addLog("error", "Shopping run already in progress");
-    return;
+    const lastActivity = shoppingState.lastActivityAt ?? 0;
+    const isStale = Date.now() - lastActivity > STALE_RUN_MS;
+
+    if (!isStale) {
+      addLog("error", "Shopping run already in progress");
+      return;
+    }
+
+    // The previous run stalled (e.g. the tab was closed or a page failed to
+    // load) and never reported completion. Reclaim it instead of getting
+    // permanently stuck in a "running" state.
+    addLog("warn", "Previous run appears to have stalled — starting a fresh run");
+    clearRunState();
   }
 
   // Parse the shopping list
@@ -82,6 +101,7 @@ function handleStartShopping(shoppingListText: string, hebBrandOnly = false) {
       state: "pending",
     })),
     logs: [],
+    lastActivityAt: Date.now(),
   };
 
   addLog("info", `Starting shopping with ${items.length} items`);
@@ -149,7 +169,35 @@ function handleCancelShopping() {
   addLog("warn", "Shopping run cancelled by user");
   broadcastStateUpdate();
 
-  // Send cancel message to content script
+  // Send cancel message to any HEB content scripts so they stop and clear state
+  cancelContentScripts();
+}
+
+// Fully reset back to an idle, empty state. This is the user-facing escape
+// hatch for a run that got stuck and won't clear on its own.
+function handleResetShopping() {
+  clearRunState();
+
+  shoppingState = {
+    isRunning: false,
+    currentItemIndex: 0,
+    items: [],
+    logs: [],
+    lastActivityAt: Date.now(),
+  };
+
+  chrome.storage.local.remove("contentScriptState");
+  addLog("info", "Agent reset. Ready for a fresh run.");
+  broadcastStateUpdate();
+}
+
+// Stop any in-flight content-script work without wiping the current UI state.
+function clearRunState() {
+  shoppingState.isRunning = false;
+  cancelContentScripts();
+}
+
+function cancelContentScripts() {
   chrome.tabs.query({ url: "https://www.heb.com/*" }, (tabs) => {
     for (const tab of tabs) {
       if (tab.id) {
@@ -207,6 +255,9 @@ function addLog(level: LogEntry["level"], message: string) {
 }
 
 function broadcastStateUpdate() {
+  // Record activity so a genuinely stalled run can be detected later
+  shoppingState.lastActivityAt = Date.now();
+
   // Save to storage for persistence
   chrome.storage.local.set({ shoppingState });
 

@@ -5,6 +5,29 @@ All notable changes to HEB Grocery Agent will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.1] - 2026-01-27
+
+### Fixed
+- **Anthropic (Claude) cleanup now works** - Added the AI provider API hosts
+  (`api.anthropic.com`, `api.openai.com`, `api.groq.com`) to `host_permissions`
+  and set the `anthropic-dangerous-direct-browser-access` header so requests are
+  no longer blocked by CORS. Previously a configured Claude key was never
+  actually used (the Anthropic dashboard showed zero usage). Network failures
+  now surface a clear error instead of failing silently.
+- **Agent no longer gets stuck in a "running" state** - A run that stalls (tab
+  closed, page fails to load, completion never reported) is now automatically
+  reclaimed by the next "Start", and a new always-available **Reset** button
+  clears the agent's state without reinstalling the extension.
+- **Smarter product search** - Search terms are cleaned before querying
+  (`One head of kale, chard, or collards` → `kale`, `Chicken or Veg Broth`
+  → `Chicken Broth`, `2 cloves garlic (minced)` → `garlic`) and the result that
+  best matches the search term is chosen instead of always taking the first one
+  (e.g. picks *sesame oil* over *sesame seeds*).
+
+### Changed
+- Added `sesame oil`, `sesame seeds`, and a few other cooking oils to the
+  grocery database used by string-matching cleanup.
+
 ## [1.0.0] - 2025-10-21
 
 ### Added
@@ -75,7 +98,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Version History
 
+- **1.0.1** (2026-01-27) - Bug fixes: Claude API key usage, stuck-state reset, smarter search
 - **1.0.0** (2025-10-21) - Initial release
 
+[1.0.1]: https://github.com/michellemayes/heb-grocery-agent/releases/tag/v1.0.1
 [1.0.0]: https://github.com/michellemayes/heb-grocery-agent/releases/tag/v1.0.0
 
