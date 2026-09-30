@@ -1,4 +1,4 @@
-import { cleanShoppingListWithAI } from "./aiCleaner";
+import { AI_MODELS, cleanShoppingListWithAI, resolveModel } from "./aiCleaner";
 import { applyCleanup, cleanShoppingList, getCleanupSummary } from "./listCleaner";
 import type {
   AIProvider,
@@ -72,6 +72,8 @@ class PanelUI {
   private readonly saveSettingsBtn = byId<HTMLButtonElement>("saveSettingsBtn");
   private readonly enableCleanup = byId<HTMLInputElement>("enableCleanupCheckbox");
   private readonly providerSelect = byId<HTMLSelectElement>("aiProviderSelect");
+  private readonly modelSelect = byId<HTMLSelectElement>("aiModelSelect");
+  private readonly modelGroup = byId<HTMLDivElement>("modelGroup");
   private readonly apiKeyInput = byId<HTMLInputElement>("apiKeyInput");
   private readonly apiKeyGroup = byId<HTMLDivElement>("apiKeyGroup");
   private readonly cleanupModal = byId<HTMLDivElement>("cleanupModal");
@@ -107,7 +109,7 @@ class PanelUI {
     this.settingsBtn.addEventListener("click", () => this.settingsModal.classList.remove("hidden"));
     this.closeSettingsBtn.addEventListener("click", () => this.settingsModal.classList.add("hidden"));
     this.saveSettingsBtn.addEventListener("click", () => this.saveSettings());
-    this.providerSelect.addEventListener("change", () => this.updateApiKeyVisibility());
+    this.providerSelect.addEventListener("change", () => this.updateProviderFields());
 
     this.closeCleanupBtn.addEventListener("click", () => this.closeCleanupModal());
     this.cancelCleanupBtn.addEventListener("click", () => this.closeCleanupModal());
@@ -174,11 +176,20 @@ class PanelUI {
       this.providerSelect.value = this.settings.provider;
       this.apiKeyInput.value = this.settings.apiKey;
     }
-    this.updateApiKeyVisibility();
+    this.updateProviderFields(this.settings.model);
   }
 
-  private updateApiKeyVisibility() {
-    this.apiKeyGroup.hidden = this.providerSelect.value === "none";
+  private updateProviderFields(selectedModel?: string) {
+    const provider = this.providerSelect.value as AIProvider;
+    this.apiKeyGroup.hidden = provider === "none";
+    this.modelGroup.hidden = provider === "none";
+    if (provider === "none") {
+      return;
+    }
+    const current = resolveModel(provider, selectedModel);
+    this.modelSelect.replaceChildren(
+      ...AI_MODELS[provider].map((option) => new Option(option.label, option.id, false, option.id === current.id)),
+    );
   }
 
   private async saveSettings() {
@@ -186,6 +197,7 @@ class PanelUI {
       enabled: this.enableCleanup.checked,
       provider: this.providerSelect.value as AIProvider,
       apiKey: this.apiKeyInput.value.trim(),
+      model: this.providerSelect.value === "none" ? undefined : this.modelSelect.value,
     };
     await chrome.storage.local.set({ cleanupSettings: this.settings });
     this.settingsModal.classList.add("hidden");
@@ -198,7 +210,7 @@ class PanelUI {
       return;
     }
 
-    const { enabled, provider, apiKey } = this.settings;
+    const { enabled, provider, apiKey, model } = this.settings;
     const useAI = enabled && provider !== "none" && Boolean(apiKey);
 
     this.cleanListBtn.disabled = true;
@@ -207,7 +219,7 @@ class PanelUI {
       let diff: CleanupDiff;
       try {
         diff = useAI
-          ? await cleanShoppingListWithAI(listText, provider, apiKey)
+          ? await cleanShoppingListWithAI(listText, provider, apiKey, model)
           : cleanShoppingList(listText);
       } catch (error) {
         alert(`AI cleanup failed: ${errorMessage(error)}\n\nUsing string matching instead.`);

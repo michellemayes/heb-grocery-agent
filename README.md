@@ -54,13 +54,13 @@ Units understood: cup, tsp, tbsp, oz, lb, g, kg, bag, can, pkg, bottle, count an
 
 **Clean List** suggests fixes (typos, duplicates, inconsistent names) and shows a before/after preview. Nothing changes until you click **Apply Changes**.
 
-By default it matches items against a built-in list of about 1,000 groceries, which works offline. To use an AI model instead, open Settings, turn on **Use AI for Clean List**, pick a provider and paste an API key:
+By default it matches items against a built-in list of about 1,000 groceries, which works offline. To use an AI model instead, open Settings, turn on **Use AI for Clean List**, pick a provider and model, and paste an API key. Each provider defaults to its cheapest model, which is plenty for list cleanup:
 
-| Provider  | Model                     | Get a key                               |
-| --------- | ------------------------- | --------------------------------------- |
-| Groq      | `llama-3.3-70b-versatile` | https://console.groq.com (free tier)    |
-| OpenAI    | `gpt-5-mini`              | https://platform.openai.com/api-keys    |
-| Anthropic | `claude-opus-5-5`         | https://console.anthropic.com           |
+| Provider  | Models (default first)                                                   | Get a key                               |
+| --------- | ------------------------------------------------------------------------ | --------------------------------------- |
+| Groq      | `llama-3.1-8b-instant`, `openai/gpt-oss-20b`, `llama-3.3-70b-versatile` | https://console.groq.com (free tier)    |
+| OpenAI    | `gpt-5-nano`, `gpt-5-mini`                                               | https://platform.openai.com/api-keys    |
+| Anthropic | `claude-haiku-4-5`, `claude-sonnet-5-5`, `claude-opus-5-5`               | https://console.anthropic.com           |
 
 If the AI request fails, Clean List falls back to string matching and tells you why.
 
