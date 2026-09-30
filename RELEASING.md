@@ -1,6 +1,6 @@
 # Releasing an update
 
-Once the one-time setup below is done, a release is: bump the version in a PR, merge it, and push a tag. GitHub Actions uploads the new version to the Chrome Web Store and submits it for review.
+Once the one-time setup below is done, a release is: bump the version in a PR and merge it. GitHub Actions uploads the new version to the Chrome Web Store and submits it for review. Merges that don't change the version publish nothing.
 
 ## Every release
 
@@ -26,24 +26,19 @@ CI builds the extension on every PR push:
 3. In `chrome://extensions`, turn on Developer mode, click **Load unpacked** and choose that folder. Turn off the store-installed copy while you test.
 4. Sign in on heb.com and run a short list (three or four items). Check that the items land in the cart and that Cancel and Reset work. If you use AI cleanup, run **Clean List** once.
 
-### 3. Merge the PR, then tag it
+### 3. Merge the PR
 
-```bash
-git checkout main && git pull
-git tag v1.2.0          # must match extension/package.json
-git push origin v1.2.0
-```
-
-The **Release** workflow then:
+When a merge to `main` has a version with no `v<version>` tag yet, the **Release** workflow:
 
 1. Runs the checks.
-2. Confirms the tag matches the version.
-3. Uploads the zip to the Chrome Web Store and submits it for review.
-4. Creates a GitHub release with the zip attached.
+2. Uploads the zip to the Chrome Web Store and submits it for review.
+3. Creates the `v<version>` tag and a GitHub release with the zip attached.
 
 Watch it under the repo's **Actions** tab. Review usually takes a few hours to a few days, and the update goes live automatically once approved.
 
-**If the manifest's permissions changed**, update the justifications on the dashboard's **Privacy practices** tab (text in `STORE_LISTING.md`) before tagging. Otherwise review may be rejected.
+If a publish fails (for example, a missing secret), fix the cause, then open **Actions → Release → Run workflow** on `main` to retry. The tag is created only after the store accepts the upload, so retrying is safe.
+
+**If the manifest's permissions changed**, update the justifications on the dashboard's **Privacy practices** tab (text in `STORE_LISTING.md`) before merging. Otherwise review may be rejected.
 
 ## One-time setup for automatic publishing
 
@@ -63,8 +58,6 @@ To get the OAuth values, follow the step-by-step guide at https://github.com/fre
 2. Configure the OAuth consent screen as **External**, add yourself as a test user, then **publish the app**. A consent screen left in "Testing" issues refresh tokens that expire after 7 days.
 3. Create an OAuth client ID. The guide says which application type to pick. Copy the client ID and secret.
 4. Generate the refresh token with the guide's helper, signing in with the Google account that owns the store listing.
-
-To check the setup without waiting for a real release, you can push a tag for the version that's already published. The upload step fails with a "version already exists" style error, which proves the credentials work. Then delete the tag with `git push origin :refs/tags/v<version>`.
 
 ## Publishing by hand
 

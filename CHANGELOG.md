@@ -5,15 +5,13 @@ All notable changes to HEB Grocery Agent will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [1.1.0] - 2026-09-30
 
 ### Added
 - **Choose the AI model for Clean List.** Settings now has a model picker per
   provider, defaulting to the cheapest option: Groq `llama-3.1-8b-instant`,
   OpenAI `gpt-5-nano`, Anthropic `claude-haiku-4-5`. The previous models are
   still available in the list.
-
-## [1.1.0] - 2026-09-30
 
 ### Fixed
 - **Runs no longer double-add, stall or leak into each other.** The background

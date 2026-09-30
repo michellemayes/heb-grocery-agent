@@ -1,41 +1,75 @@
 name: Release
 
-# Pushing a tag like v1.2.0 builds the extension, uploads it to the Chrome Web
-# Store, submits it for review, and creates a GitHub release with the zip.
-# One-time setup is described in RELEASING.md.
+# Runs on every merge to main. If extension/package.json has a version that
+# hasn't been released yet (no v<version> tag), it builds the extension,
+# uploads it to the Chrome Web Store, submits it for review, and creates the
+# tag plus a GitHub release with the zip. Merges that don't bump the version
+# do nothing. One-time setup is described in RELEASING.md.
 
 on:
   push:
-    tags: ["v*"]
+    branches: [main]
+  workflow_dispatch: # "Run workflow" button, e.g. to retry a failed publish
 
 permissions:
-  contents: write # create the GitHub release
+  contents: write # create the tag and GitHub release
+
+concurrency:
+  group: release
+  cancel-in-progress: false
 
 jobs:
   publish:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
-      - uses: actions/setup-node@v5
         with:
-          node-version-file: .nvmrc
-          cache: npm
-      - run: npm ci
-      - run: npm run check
+          fetch-depth: 0 # need tags to tell whether this version is released
 
-      - name: Check the tag matches the version
+      - name: Check for an unreleased version
         id: version
         run: |
           version=$(node -p "require('./extension/package.json').version")
-          if [ "v$version" != "$GITHUB_REF_NAME" ]; then
-            echo "::error::Tag $GITHUB_REF_NAME does not match extension/package.json version $version. Bump the version, merge, then tag."
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          if git rev-parse -q --verify "refs/tags/v$version" >/dev/null; then
+            echo "v$version is already released. Bump the version in extension/package.json to publish." >> "$GITHUB_STEP_SUMMARY"
+            echo "release=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "release=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Check Chrome Web Store secrets are set
+        if: steps.version.outputs.release == 'true'
+        env:
+          EXTENSION_ID: ${{ secrets.CHROME_EXTENSION_ID }}
+          PUBLISHER_ID: ${{ secrets.CHROME_PUBLISHER_ID }}
+          CLIENT_ID: ${{ secrets.CHROME_CLIENT_ID }}
+          CLIENT_SECRET: ${{ secrets.CHROME_CLIENT_SECRET }}
+          REFRESH_TOKEN: ${{ secrets.CHROME_REFRESH_TOKEN }}
+        run: |
+          missing=""
+          for name in EXTENSION_ID PUBLISHER_ID CLIENT_ID CLIENT_SECRET REFRESH_TOKEN; do
+            [ -n "${!name}" ] || missing="$missing CHROME_$name"
+          done
+          if [ -n "$missing" ]; then
+            echo "::error::Missing repository secrets:$missing. See RELEASING.md, then re-run this workflow."
             exit 1
           fi
-          echo "version=$version" >> "$GITHUB_OUTPUT"
 
-      - run: npm run package
+      - uses: actions/setup-node@v5
+        if: steps.version.outputs.release == 'true'
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - if: steps.version.outputs.release == 'true'
+        run: npm ci
+      - if: steps.version.outputs.release == 'true'
+        run: npm run check
+      - if: steps.version.outputs.release == 'true'
+        run: npm run package
 
       - name: Upload to the Chrome Web Store and submit for review
+        if: steps.version.outputs.release == 'true'
         run: >-
           npx --yes chrome-webstore-upload-cli@4.0.1
           --source "release/heb-grocery-agent-v${{ steps.version.outputs.version }}.zip"
@@ -46,11 +80,15 @@ jobs:
           CLIENT_SECRET: ${{ secrets.CHROME_CLIENT_SECRET }}
           REFRESH_TOKEN: ${{ secrets.CHROME_REFRESH_TOKEN }}
 
-      - name: Create GitHub release
+      # Only tag once the store has accepted the upload, so a failed publish
+      # is retried by the next merge or the "Run workflow" button.
+      - name: Tag and create GitHub release
+        if: steps.version.outputs.release == 'true'
         run: >-
-          gh release create "$GITHUB_REF_NAME"
+          gh release create "v${{ steps.version.outputs.version }}"
           "release/heb-grocery-agent-v${{ steps.version.outputs.version }}.zip"
-          --title "$GITHUB_REF_NAME"
+          --target "$GITHUB_SHA"
+          --title "v${{ steps.version.outputs.version }}"
           --generate-notes
         env:
           GH_TOKEN: ${{ github.token }}
