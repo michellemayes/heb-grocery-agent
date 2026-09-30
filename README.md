@@ -1,5 +1,7 @@
 # HEB Grocery Agent
 
+[![CI](https://github.com/michellemayes/heb-grocery-agent/actions/workflows/ci.yml/badge.svg)](https://github.com/michellemayes/heb-grocery-agent/actions/workflows/ci.yml)
+
 A Chrome extension that takes a free-form grocery list and adds each item to your HEB.com cart. It searches for each item, picks the result whose name best matches, and clicks "Add to cart". You review the cart and check out yourself.
 
 ## Install from source
@@ -24,7 +26,9 @@ After pulling new changes, run `npm run build` again and click the reload icon o
 
 1. Sign in on heb.com and pick your store.
 2. Click the extension icon to open the side panel.
-3. Paste your list and click **Start Shopping**.
+3. Paste your list (or click **Load Example** to try a sample) and click **Start Shopping**.
+
+Tick **HEB brand only** to limit searches to H-E-B brand products.
 
 The agent reuses an open heb.com tab (or opens one) and works through the list. Each item shows its status in the panel. Items that couldn't be added are marked with the reason, so you can add them by hand. Your list is kept between sessions.
 
@@ -48,7 +52,7 @@ Most formats work. Section headers, quantities, bullets and notes are all unders
 
 Before searching, each item is reduced to a search term: `One head of kale, chard, or collards` searches for `kale`, `Chicken or Veg Broth` for `Chicken Broth`, and `2 cloves garlic (minced)` for `garlic`.
 
-Units understood: cup, tsp, tbsp, oz, lb, g, kg, bag, can, pkg, bottle, count and their plurals.
+Units understood: cup, tsp/teaspoon, tbsp/tablespoon, oz/ounce, lb/pound, g/gram, kg/kilogram, bag, can, pkg/package, bottle, ct/count, and their plurals.
 
 ### Clean List
 
@@ -105,7 +109,7 @@ extension/
 
 The background worker navigates the heb.com tab to each search page, waits for it to load, then asks the content script to add the best match. The content script keeps no state, so page reloads can't leave a run half-finished. Each step has a timeout, and every run has an ID so a cancelled or replaced run stops itself.
 
-Releasing is covered in [RELEASING.md](RELEASING.md): bump the version, merge, and push a `v<version>` tag to publish to the Chrome Web Store.
+Releasing is covered in [RELEASING.md](RELEASING.md): bump the version, merge, and push a `v<version>` tag to publish to the Chrome Web Store. Changes are recorded in [CHANGELOG.md](CHANGELOG.md), and the store listing copy lives in [STORE_LISTING.md](STORE_LISTING.md).
 
 ## Privacy
 
