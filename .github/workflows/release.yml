@@ -1,0 +1,56 @@
+name: Release
+
+# Pushing a tag like v1.2.0 builds the extension, uploads it to the Chrome Web
+# Store, submits it for review, and creates a GitHub release with the zip.
+# One-time setup is described in RELEASING.md.
+
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write # create the GitHub release
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - run: npm ci
+      - run: npm run check
+
+      - name: Check the tag matches the version
+        id: version
+        run: |
+          version=$(node -p "require('./extension/package.json').version")
+          if [ "v$version" != "$GITHUB_REF_NAME" ]; then
+            echo "::error::Tag $GITHUB_REF_NAME does not match extension/package.json version $version. Bump the version, merge, then tag."
+            exit 1
+          fi
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+
+      - run: npm run package
+
+      - name: Upload to the Chrome Web Store and submit for review
+        run: >-
+          npx --yes chrome-webstore-upload-cli@4.0.1
+          --source "release/heb-grocery-agent-v${{ steps.version.outputs.version }}.zip"
+        env:
+          EXTENSION_ID: ${{ secrets.CHROME_EXTENSION_ID }}
+          PUBLISHER_ID: ${{ secrets.CHROME_PUBLISHER_ID }}
+          CLIENT_ID: ${{ secrets.CHROME_CLIENT_ID }}
+          CLIENT_SECRET: ${{ secrets.CHROME_CLIENT_SECRET }}
+          REFRESH_TOKEN: ${{ secrets.CHROME_REFRESH_TOKEN }}
+
+      - name: Create GitHub release
+        run: >-
+          gh release create "$GITHUB_REF_NAME"
+          "release/heb-grocery-agent-v${{ steps.version.outputs.version }}.zip"
+          --title "$GITHUB_REF_NAME"
+          --generate-notes
+        env:
+          GH_TOKEN: ${{ github.token }}

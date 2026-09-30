@@ -17,10 +17,14 @@ jobs:
       - run: npm ci
       - run: npm run check
       - run: npm run package
-      # Download the zip from the run's summary page to test the exact build
-      # or upload it to the Chrome Web Store.
+      - id: version
+        run: echo "version=$(node -p "require('./extension/package.json').version")" >> "$GITHUB_OUTPUT"
+      # Upload the contents of dist/ rather than the release zip. GitHub always
+      # zips artifacts, so uploading a zip would nest it inside another zip.
+      # This way the downloaded artifact has manifest.json at its root and can
+      # go straight to the Chrome Web Store.
       - uses: actions/upload-artifact@v4
         with:
-          name: heb-grocery-agent-extension
-          path: release/*.zip
+          name: heb-grocery-agent-v${{ steps.version.outputs.version }}
+          path: extension/dist/
           if-no-files-found: error
