@@ -38,6 +38,8 @@ Watch it under the repo's **Actions** tab. Review usually takes a few hours to a
 
 If a publish fails (for example, a missing secret), fix the cause, then open **Actions → Release → Run workflow** on `main` to retry. The tag is created only after the store accepts the upload, so retrying is safe.
 
+If the workflow fails with "You may not edit or publish an item that is in review", an earlier submission is still in review. Wait for it to clear, then retry. If the version in review is the one being released (for example, you uploaded it by hand), just retry: the workflow sees the store already has that version, skips the upload, and creates the tag and GitHub release.
+
 **If the manifest's permissions changed**, update the justifications on the dashboard's **Privacy practices** tab (text in `STORE_LISTING.md`) before merging. Otherwise review may be rejected.
 
 ## One-time setup for automatic publishing

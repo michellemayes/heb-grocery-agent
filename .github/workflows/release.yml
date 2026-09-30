@@ -68,8 +68,37 @@ jobs:
       - if: steps.version.outputs.release == 'true'
         run: npm run package
 
-      - name: Upload to the Chrome Web Store and submit for review
+      # The store refuses any upload while a submission is in review, and
+      # refuses a version it already has. If this version was already
+      # submitted (for example, uploaded by hand), skip the upload and just
+      # tag it. If the status check itself fails, try the upload anyway.
+      - name: Check whether the store already has this version
+        id: store
         if: steps.version.outputs.release == 'true'
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+          EXTENSION_ID: ${{ secrets.CHROME_EXTENSION_ID }}
+          PUBLISHER_ID: ${{ secrets.CHROME_PUBLISHER_ID }}
+          CLIENT_ID: ${{ secrets.CHROME_CLIENT_ID }}
+          CLIENT_SECRET: ${{ secrets.CHROME_CLIENT_SECRET }}
+          REFRESH_TOKEN: ${{ secrets.CHROME_REFRESH_TOKEN }}
+        run: |
+          echo "upload=true" >> "$GITHUB_OUTPUT"
+          token=$(curl -fsS https://oauth2.googleapis.com/token \
+            -d client_id="$CLIENT_ID" -d client_secret="$CLIENT_SECRET" \
+            -d refresh_token="$REFRESH_TOKEN" -d grant_type=refresh_token \
+            | jq -r .access_token) || { echo "::warning::Could not get a token to check store status; uploading anyway."; exit 0; }
+          status=$(curl -fsS -H "Authorization: Bearer $token" \
+            "https://chromewebstore.googleapis.com/v2/publishers/$PUBLISHER_ID/items/$EXTENSION_ID:fetchStatus") \
+            || { echo "::warning::Could not fetch store status; uploading anyway."; exit 0; }
+          echo "Store versions: $(jq -c '[.. | .crxVersion? // empty]' <<<"$status")"
+          if jq -e --arg v "$VERSION" '[.. | .crxVersion? // empty] | index($v)' <<<"$status" >/dev/null; then
+            echo "v$VERSION is already submitted to the Chrome Web Store. Skipping the upload and tagging the release." >> "$GITHUB_STEP_SUMMARY"
+            echo "upload=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Upload to the Chrome Web Store and submit for review
+        if: steps.version.outputs.release == 'true' && steps.store.outputs.upload == 'true'
         run: >-
           npx --yes chrome-webstore-upload-cli@4.0.1
           --source "release/heb-grocery-agent-v${{ steps.version.outputs.version }}.zip"
