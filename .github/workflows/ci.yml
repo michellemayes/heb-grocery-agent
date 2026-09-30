@@ -1,0 +1,26 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - run: npm ci
+      - run: npm run check
+      - run: npm run package
+      # Download the zip from the run's summary page to test the exact build
+      # or upload it to the Chrome Web Store.
+      - uses: actions/upload-artifact@v4
+        with:
+          name: heb-grocery-agent-extension
+          path: release/*.zip
+          if-no-files-found: error

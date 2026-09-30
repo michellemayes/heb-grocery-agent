@@ -24,60 +24,44 @@ export interface ItemState {
 
 export interface ShoppingState {
   isRunning: boolean;
+  /** Identifies the active run so a cancelled or superseded run stops itself. */
+  runId?: string;
   currentItemIndex: number;
   items: ItemState[];
   logs: LogEntry[];
-  /** Timestamp (ms) of the last state change, used to detect stalled runs. */
-  lastActivityAt?: number;
 }
+
+export type LogLevel = "info" | "warn" | "error";
 
 export interface LogEntry {
   id: string;
-  level: "info" | "warn" | "error";
+  level: LogLevel;
   message: string;
   timestamp: number;
 }
 
-export interface StartShoppingMessage {
-  type: "START_SHOPPING";
-  shoppingList: string;
-  hebBrandOnly?: boolean;
-}
+/** Side panel -> background */
+export type PanelMessage =
+  | { type: "START_SHOPPING"; shoppingList: string; hebBrandOnly: boolean }
+  | { type: "CANCEL_SHOPPING" }
+  | { type: "RESET_SHOPPING" }
+  | { type: "CLEAR_LOGS" };
 
-export interface CancelShoppingMessage {
-  type: "CANCEL_SHOPPING";
-}
-
-export interface ResetShoppingMessage {
-  type: "RESET_SHOPPING";
-}
-
+/** Background -> side panel */
 export interface StateUpdateMessage {
   type: "STATE_UPDATE";
   state: ShoppingState;
 }
 
-export interface ItemUpdateMessage {
-  type: "ITEM_UPDATE";
-  itemIndex: number;
-  state: ItemProgressState;
-  detail?: string;
-  error?: string;
+/** Background -> content script: add one item from the current search page. */
+export interface AddItemRequest {
+  type: "ADD_ITEM";
+  query: string;
 }
 
-export interface LogMessage {
-  type: "LOG";
-  level: "info" | "warn" | "error";
-  message: string;
-}
-
-export type ExtensionMessage =
-  | StartShoppingMessage
-  | CancelShoppingMessage
-  | ResetShoppingMessage
-  | StateUpdateMessage
-  | ItemUpdateMessage
-  | LogMessage;
+export type AddItemResult =
+  | { ok: true; productName: string }
+  | { ok: false; error: string };
 
 export type AIProvider = "none" | "openai" | "anthropic" | "groq";
 
@@ -100,6 +84,5 @@ export interface CleanupDiff {
   original: string[];
   cleaned: string[];
   changes: CleanupChange[];
-  method: "string-similarity" | "ai" | "none";
+  method: "string-similarity" | "ai";
 }
-

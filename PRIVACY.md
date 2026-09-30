@@ -1,6 +1,6 @@
 # Privacy Policy for HEB Grocery Agent
 
-**Last Updated:** October 21, 2025
+**Last Updated:** September 30, 2026
 
 ## Overview
 
@@ -66,11 +66,10 @@ The extension does not:
 
 The extension requests the following Chrome permissions:
 
-- **`activeTab`**: To interact with the current HEB.com tab
-- **`storage`**: To save your settings and API keys locally
-- **`scripting`**: To automate adding items to cart on HEB.com
+- **`storage`**: To save your list, settings and API key locally
 - **`sidePanel`**: To display the extension interface in a side panel
-- **`host_permissions` (heb.com)**: To function only on HEB.com pages
+- **Host access to `www.heb.com`**: To search for items and add them to your cart
+- **Host access to `api.groq.com`, `api.openai.com`, `api.anthropic.com`**: To send your list to the AI provider you chose, only when you click Clean List with AI turned on
 
 ## Third-Party Services
 
@@ -89,8 +88,7 @@ We do not use:
 
 ## Data Security
 
-- API keys are stored encrypted in Chrome's local storage
-- No data is transmitted over unencrypted connections
+- API keys are kept in Chrome's extension storage (`chrome.storage.local`), which only this extension can read. They are not encrypted at rest, so anyone with access to your Chrome profile could read them.
 - All AI provider API calls use HTTPS
 - No server-side data storage (we don't have servers)
 
@@ -101,7 +99,7 @@ You have complete control over your data:
 - **View**: Open Chrome DevTools → Application → Storage to see stored data
 - **Export**: Copy your settings manually if needed
 - **Delete**: Uninstall the extension to remove all local data
-- **Clear**: Use the extension's settings to remove API keys
+- **Clear**: Delete the key in Settings and save to remove it
 
 ## Children's Privacy
 
@@ -120,15 +118,3 @@ https://github.com/michellemayes/heb-grocery-agent
 
 For privacy concerns or questions:
 - GitHub Issues: https://github.com/michellemayes/heb-grocery-agent/issues
-
-## Summary
-
-✅ All data stored locally on your device  
-✅ No tracking or analytics  
-✅ API keys only sent to your chosen AI provider  
-✅ Works offline with string-matching (no AI)  
-✅ Open source and auditable  
-✅ No personal data collection  
-
-Your privacy is important to us. This extension is designed to work entirely within your control.
-

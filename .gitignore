@@ -5,9 +5,6 @@ yarn.lock
 
 # Build outputs
 dist/
-frontend/dist/
-backend/dist/
-shared/dist/
 *.tsbuildinfo
 
 # Misc
@@ -15,7 +12,9 @@ shared/dist/
 .env
 .env.*
 
+# Local notes
 SUBMISSION_CHECKLIST.md
 SCREENSHOT_GUIDE.md
 
-heb-grocery-agent-v1.0.0.zip
+# Release zips
+release/

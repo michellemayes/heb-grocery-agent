@@ -32,7 +32,7 @@
               </svg><span class="btn-text-content">Clean List</span>
             </button>
             <button id="loadExampleBtn" class="btn-secondary">Load Example</button>
-            <button id="settingsBtn" class="btn-icon" title="Settings">
+            <button id="settingsBtn" class="btn-icon" title="Settings" aria-label="Settings">
               <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
                 <path d="M475.584,192h-61.497l44.81-44.898c13.871-13.925,13.855-36.435-0.065-50.301l-42.335-42.357
                   c-14.652-14.603-38.316-14.603-52.915-0.004L320,97.902V36.416C320,16.314,303.686,0,283.584,0h-55.168
@@ -77,7 +77,7 @@ Example:
       </section>
 
       <section class="controls">
-        <div class="status-badge" id="statusBadge">Status: Idle</div>
+        <div class="status-badge status-idle" id="statusBadge">Idle</div>
         <div class="button-group">
           <button id="resetBtn" class="btn-secondary" title="Clear the agent's state and start fresh">Reset</button>
           <button id="cancelBtn" class="btn-secondary" disabled>Cancel</button>
@@ -111,16 +111,16 @@ Example:
       <div class="modal-content">
         <div class="modal-header">
           <h2>Settings</h2>
-          <button id="closeSettingsBtn" class="btn-icon">×</button>
+          <button id="closeSettingsBtn" class="btn-icon" aria-label="Close">×</button>
         </div>
         <div class="modal-body">
           <div class="setting-group">
             <label class="setting-label">
               <input type="checkbox" id="enableCleanupCheckbox" />
-              <span>Enable Smart Cleanup</span>
+              <span>Use AI for Clean List</span>
             </label>
             <p class="setting-description">
-              Automatically fix typos, standardize names, and remove duplicates from your shopping list
+              When off, Clean List uses built-in string matching and works offline
             </p>
           </div>
 
@@ -128,13 +128,13 @@ Example:
             <label class="setting-label">AI Provider</label>
             <select id="aiProviderSelect" class="setting-input">
               <option value="none">None (String Matching Only)</option>
-              <option value="groq">Groq (Llama 3.3 - Fast & Free)</option>
-              <option value="openai">OpenAI (GPT-4)</option>
-              <option value="anthropic">Anthropic (Claude)</option>
+              <option value="groq">Groq (Llama 3.3, free tier)</option>
+              <option value="openai">OpenAI (GPT-5 mini)</option>
+              <option value="anthropic">Anthropic (Claude Opus 5.5)</option>
             </select>
           </div>
 
-          <div class="setting-group" id="apiKeyGroup">
+          <div class="setting-group" id="apiKeyGroup" hidden>
             <label class="setting-label">API Key</label>
             <input type="password" id="apiKeyInput" class="setting-input" placeholder="Enter your API key" />
             <p class="setting-description">
@@ -153,7 +153,7 @@ Example:
       <div class="modal-content modal-wide">
         <div class="modal-header">
           <h2>List Cleanup Preview</h2>
-          <button id="closeCleanupBtn" class="btn-icon">×</button>
+          <button id="closeCleanupBtn" class="btn-icon" aria-label="Close">×</button>
         </div>
         <div class="modal-body">
           <div id="cleanupSummary" class="cleanup-summary"></div>

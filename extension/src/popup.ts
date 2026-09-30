@@ -1,6 +1,13 @@
-import type { ShoppingState, ExtensionMessage, CleanupSettings, CleanupDiff, AIProvider } from "./types";
-import { cleanShoppingList, applyCleanup, getCleanupSummary } from "./listCleaner";
 import { cleanShoppingListWithAI } from "./aiCleaner";
+import { applyCleanup, cleanShoppingList, getCleanupSummary } from "./listCleaner";
+import type {
+  AIProvider,
+  CleanupDiff,
+  CleanupSettings,
+  PanelMessage,
+  ShoppingState,
+  StateUpdateMessage,
+} from "./types";
 
 const EXAMPLE_LIST = `Groceries
 
@@ -25,280 +32,189 @@ const EXAMPLE_LIST = `Groceries
 1 cup uncooked Orzo
 1/2 cup Parmigiano (grated)`;
 
-class PopupUI {
-  private shoppingListInput: HTMLTextAreaElement;
-  private hebBrandOnlyCheckbox: HTMLInputElement;
-  private startBtn: HTMLButtonElement;
-  private cancelBtn: HTMLButtonElement;
-  private resetBtn: HTMLButtonElement;
-  private loadExampleBtn: HTMLButtonElement;
-  private clearLogsBtn: HTMLButtonElement;
-  private statusBadge: HTMLDivElement;
-  private itemCount: HTMLSpanElement;
-  private itemsList: HTMLDivElement;
-  private logsList: HTMLDivElement;
+const DRAFT_KEY = "draftList";
 
-  // New elements
-  private cleanListBtn: HTMLButtonElement;
-  private settingsBtn: HTMLButtonElement;
-  private settingsModal: HTMLDivElement;
-  private closeSettingsBtn: HTMLButtonElement;
-  private saveSettingsBtn: HTMLButtonElement;
-  private enableCleanupCheckbox: HTMLInputElement;
-  private aiProviderSelect: HTMLSelectElement;
-  private apiKeyInput: HTMLInputElement;
-  private cleanupModal: HTMLDivElement;
-  private closeCleanupBtn: HTMLButtonElement;
-  private cancelCleanupBtn: HTMLButtonElement;
-  private applyCleanupBtn: HTMLButtonElement;
-  private cleanupSummary: HTMLDivElement;
-  private cleanupChanges: HTMLDivElement;
+function byId<T extends HTMLElement>(id: string): T {
+  const element = document.getElementById(id);
+  if (!element) {
+    throw new Error(`Missing #${id} in popup.html`);
+  }
+  return element as T;
+}
 
-  private port: chrome.runtime.Port | null = null;
-  private currentState: ShoppingState = {
-    isRunning: false,
-    currentItemIndex: 0,
-    items: [],
-    logs: [],
-  };
+function escapeHtml(text: string): string {
+  const div = document.createElement("div");
+  div.textContent = text;
+  return div.innerHTML;
+}
+
+function errorMessage(error: unknown): string {
+  return error instanceof Error ? error.message : String(error);
+}
+
+class PanelUI {
+  private readonly listInput = byId<HTMLTextAreaElement>("shoppingListInput");
+  private readonly hebBrandOnly = byId<HTMLInputElement>("hebBrandOnlyCheckbox");
+  private readonly startBtn = byId<HTMLButtonElement>("startBtn");
+  private readonly cancelBtn = byId<HTMLButtonElement>("cancelBtn");
+  private readonly resetBtn = byId<HTMLButtonElement>("resetBtn");
+  private readonly loadExampleBtn = byId<HTMLButtonElement>("loadExampleBtn");
+  private readonly clearLogsBtn = byId<HTMLButtonElement>("clearLogsBtn");
+  private readonly statusBadge = byId<HTMLDivElement>("statusBadge");
+  private readonly itemCount = byId<HTMLSpanElement>("itemCount");
+  private readonly itemsList = byId<HTMLDivElement>("itemsList");
+  private readonly logsList = byId<HTMLDivElement>("logsList");
+
+  private readonly cleanListBtn = byId<HTMLButtonElement>("cleanListBtn");
+  private readonly settingsBtn = byId<HTMLButtonElement>("settingsBtn");
+  private readonly settingsModal = byId<HTMLDivElement>("settingsModal");
+  private readonly closeSettingsBtn = byId<HTMLButtonElement>("closeSettingsBtn");
+  private readonly saveSettingsBtn = byId<HTMLButtonElement>("saveSettingsBtn");
+  private readonly enableCleanup = byId<HTMLInputElement>("enableCleanupCheckbox");
+  private readonly providerSelect = byId<HTMLSelectElement>("aiProviderSelect");
+  private readonly apiKeyInput = byId<HTMLInputElement>("apiKeyInput");
+  private readonly apiKeyGroup = byId<HTMLDivElement>("apiKeyGroup");
+  private readonly cleanupModal = byId<HTMLDivElement>("cleanupModal");
+  private readonly closeCleanupBtn = byId<HTMLButtonElement>("closeCleanupBtn");
+  private readonly cancelCleanupBtn = byId<HTMLButtonElement>("cancelCleanupBtn");
+  private readonly applyCleanupBtn = byId<HTMLButtonElement>("applyCleanupBtn");
+  private readonly cleanupSummary = byId<HTMLDivElement>("cleanupSummary");
+  private readonly cleanupChanges = byId<HTMLDivElement>("cleanupChanges");
+
+  private state: ShoppingState = { isRunning: false, currentItemIndex: 0, items: [], logs: [] };
   private cleanupDiff: CleanupDiff | null = null;
-  private cleanupSettings: CleanupSettings = {
-    enabled: false,
-    provider: "none",
-    apiKey: "",
-  };
+  private settings: CleanupSettings = { enabled: false, provider: "none", apiKey: "" };
+  private lastScrolledIndex = -1;
 
   constructor() {
-    // Get DOM elements
-    this.shoppingListInput = document.getElementById(
-      "shoppingListInput"
-    ) as HTMLTextAreaElement;
-    this.hebBrandOnlyCheckbox = document.getElementById(
-      "hebBrandOnlyCheckbox"
-    ) as HTMLInputElement;
-    this.startBtn = document.getElementById("startBtn") as HTMLButtonElement;
-    this.cancelBtn = document.getElementById("cancelBtn") as HTMLButtonElement;
-    this.resetBtn = document.getElementById("resetBtn") as HTMLButtonElement;
-    this.loadExampleBtn = document.getElementById(
-      "loadExampleBtn"
-    ) as HTMLButtonElement;
-    this.clearLogsBtn = document.getElementById(
-      "clearLogsBtn"
-    ) as HTMLButtonElement;
-    this.statusBadge = document.getElementById("statusBadge") as HTMLDivElement;
-    this.itemCount = document.getElementById("itemCount") as HTMLSpanElement;
-    this.itemsList = document.getElementById("itemsList") as HTMLDivElement;
-    this.logsList = document.getElementById("logsList") as HTMLDivElement;
-
-    // New elements
-    this.cleanListBtn = document.getElementById("cleanListBtn") as HTMLButtonElement;
-    this.settingsBtn = document.getElementById("settingsBtn") as HTMLButtonElement;
-    this.settingsModal = document.getElementById("settingsModal") as HTMLDivElement;
-    this.closeSettingsBtn = document.getElementById("closeSettingsBtn") as HTMLButtonElement;
-    this.saveSettingsBtn = document.getElementById("saveSettingsBtn") as HTMLButtonElement;
-    this.enableCleanupCheckbox = document.getElementById("enableCleanupCheckbox") as HTMLInputElement;
-    this.aiProviderSelect = document.getElementById("aiProviderSelect") as HTMLSelectElement;
-    this.apiKeyInput = document.getElementById("apiKeyInput") as HTMLInputElement;
-    this.cleanupModal = document.getElementById("cleanupModal") as HTMLDivElement;
-    this.closeCleanupBtn = document.getElementById("closeCleanupBtn") as HTMLButtonElement;
-    this.cancelCleanupBtn = document.getElementById("cancelCleanupBtn") as HTMLButtonElement;
-    this.applyCleanupBtn = document.getElementById("applyCleanupBtn") as HTMLButtonElement;
-    this.cleanupSummary = document.getElementById("cleanupSummary") as HTMLDivElement;
-    this.cleanupChanges = document.getElementById("cleanupChanges") as HTMLDivElement;
-
-    this.setupEventListeners();
-    this.connectToBackground();
-    this.loadPreferences();
+    this.bindEvents();
+    this.connect();
+    this.loadPreferences().catch(console.error);
   }
 
-  private setupEventListeners() {
-    this.startBtn.addEventListener("click", () => this.handleStart());
-    this.cancelBtn.addEventListener("click", () => this.handleCancel());
-    this.resetBtn.addEventListener("click", () => this.handleReset());
-    this.loadExampleBtn.addEventListener("click", () =>
-      this.handleLoadExample()
-    );
-    this.clearLogsBtn.addEventListener("click", () => this.handleClearLogs());
+  private bindEvents() {
+    this.startBtn.addEventListener("click", () => this.start());
+    this.cancelBtn.addEventListener("click", () => this.send({ type: "CANCEL_SHOPPING" }));
+    this.resetBtn.addEventListener("click", () => this.send({ type: "RESET_SHOPPING" }));
+    this.clearLogsBtn.addEventListener("click", () => this.send({ type: "CLEAR_LOGS" }));
+    this.loadExampleBtn.addEventListener("click", () => {
+      this.listInput.value = EXAMPLE_LIST;
+      this.saveDraft();
+    });
+    this.listInput.addEventListener("input", () => this.saveDraft());
 
-    // New event listeners
-    this.cleanListBtn.addEventListener("click", () => this.handleCleanList());
-    this.settingsBtn.addEventListener("click", () => this.openSettingsModal());
-    this.closeSettingsBtn.addEventListener("click", () => this.closeSettingsModal());
-    this.saveSettingsBtn.addEventListener("click", () => this.handleSaveSettings());
+    this.cleanListBtn.addEventListener("click", () => this.cleanList());
+    this.settingsBtn.addEventListener("click", () => this.settingsModal.classList.remove("hidden"));
+    this.closeSettingsBtn.addEventListener("click", () => this.settingsModal.classList.add("hidden"));
+    this.saveSettingsBtn.addEventListener("click", () => this.saveSettings());
+    this.providerSelect.addEventListener("change", () => this.updateApiKeyVisibility());
+
     this.closeCleanupBtn.addEventListener("click", () => this.closeCleanupModal());
     this.cancelCleanupBtn.addEventListener("click", () => this.closeCleanupModal());
-    this.applyCleanupBtn.addEventListener("click", () => this.handleApplyCleanup());
-
-    // Update API key input visibility when provider changes
-    this.aiProviderSelect.addEventListener("change", () => {
-      this.updateApiKeyVisibility();
+    this.applyCleanupBtn.addEventListener("click", () => {
+      if (this.cleanupDiff) {
+        this.listInput.value = applyCleanup(this.cleanupDiff);
+        this.saveDraft();
+      }
+      this.closeCleanupModal();
     });
   }
 
-  private connectToBackground() {
-    this.port = chrome.runtime.connect({ name: "popup" });
-
-    this.port.onMessage.addListener((message: ExtensionMessage) => {
-      if (message.type === "STATE_UPDATE") {
-        this.currentState = message.state;
-        this.updateUI();
+  /**
+   * The port delivers the current state on connect (and wakes the service
+   * worker); later changes arrive as broadcasts.
+   */
+  private connect() {
+    const onState = (message: StateUpdateMessage) => {
+      if (message?.type === "STATE_UPDATE") {
+        this.state = message.state;
+        this.render();
       }
-    });
-
-    // Request initial state
-    this.port.postMessage({ type: "GET_STATE" });
-
-    // Also listen for broadcast updates
-    chrome.runtime.onMessage.addListener((message: ExtensionMessage) => {
-      if (message.type === "STATE_UPDATE") {
-        this.currentState = message.state;
-        this.updateUI();
-      }
-    });
+    };
+    chrome.runtime.connect({ name: "panel" }).onMessage.addListener(onState);
+    chrome.runtime.onMessage.addListener(onState);
   }
 
-  private async handleStart() {
-    const shoppingList = this.shoppingListInput.value.trim();
+  private async send(message: PanelMessage) {
+    try {
+      const response = await chrome.runtime.sendMessage(message);
+      if (response && !response.ok) {
+        throw new Error(response.error);
+      }
+    } catch (error) {
+      console.error(`${message.type} failed:`, error);
+      alert(`Something went wrong: ${errorMessage(error)}`);
+    }
+  }
+
+  private async start() {
+    const shoppingList = this.listInput.value.trim();
     if (!shoppingList) {
       alert("Please enter a shopping list");
       return;
     }
-
-    const hebBrandOnly = this.hebBrandOnlyCheckbox.checked;
-
-    // Save preference
+    const hebBrandOnly = this.hebBrandOnly.checked;
     await chrome.storage.local.set({ hebBrandOnly });
-
-    try {
-      await chrome.runtime.sendMessage({
-        type: "START_SHOPPING",
-        shoppingList,
-        hebBrandOnly,
-      });
-    } catch (error) {
-      console.error("Failed to start shopping:", error);
-      alert("Failed to start shopping. Please try again.");
-    }
+    await this.send({ type: "START_SHOPPING", shoppingList, hebBrandOnly });
   }
 
-  private async handleCancel() {
-    try {
-      await chrome.runtime.sendMessage({
-        type: "CANCEL_SHOPPING",
-      });
-    } catch (error) {
-      console.error("Failed to cancel shopping:", error);
-    }
-  }
-
-  private async handleReset() {
-    try {
-      await chrome.runtime.sendMessage({
-        type: "RESET_SHOPPING",
-      });
-      // Optimistically clear the local view in case the service worker was idle.
-      this.currentState = {
-        isRunning: false,
-        currentItemIndex: 0,
-        items: [],
-        logs: [],
-      };
-      this.updateUI();
-    } catch (error) {
-      console.error("Failed to reset:", error);
-    }
-  }
-
-  private handleLoadExample() {
-    this.shoppingListInput.value = EXAMPLE_LIST;
-  }
-
-  private handleClearLogs() {
-    this.currentState.logs = [];
-    this.updateUI();
+  private saveDraft() {
+    chrome.storage.local.set({ [DRAFT_KEY]: this.listInput.value }).catch(console.error);
   }
 
   private async loadPreferences() {
-    const result = await chrome.storage.local.get(["hebBrandOnly", "cleanupSettings"]);
-    if (result.hebBrandOnly !== undefined) {
-      this.hebBrandOnlyCheckbox.checked = result.hebBrandOnly;
+    const stored = await chrome.storage.local.get(["hebBrandOnly", "cleanupSettings", DRAFT_KEY]);
+    this.hebBrandOnly.checked = Boolean(stored.hebBrandOnly);
+    if (typeof stored[DRAFT_KEY] === "string" && !this.listInput.value) {
+      this.listInput.value = stored[DRAFT_KEY];
     }
-    if (result.cleanupSettings) {
-      this.cleanupSettings = result.cleanupSettings;
-      this.enableCleanupCheckbox.checked = this.cleanupSettings.enabled;
-      this.aiProviderSelect.value = this.cleanupSettings.provider;
-      this.apiKeyInput.value = this.cleanupSettings.apiKey;
-      this.updateApiKeyVisibility();
+    if (stored.cleanupSettings) {
+      this.settings = stored.cleanupSettings as CleanupSettings;
+      this.enableCleanup.checked = this.settings.enabled;
+      this.providerSelect.value = this.settings.provider;
+      this.apiKeyInput.value = this.settings.apiKey;
     }
+    this.updateApiKeyVisibility();
   }
 
   private updateApiKeyVisibility() {
-    const apiKeyGroup = document.getElementById("apiKeyGroup");
-    if (apiKeyGroup) {
-      const provider = this.aiProviderSelect.value as AIProvider;
-      apiKeyGroup.style.display = provider !== "none" ? "block" : "none";
-    }
+    this.apiKeyGroup.hidden = this.providerSelect.value === "none";
   }
 
-  private openSettingsModal() {
-    this.settingsModal.classList.remove("hidden");
-  }
-
-  private closeSettingsModal() {
+  private async saveSettings() {
+    this.settings = {
+      enabled: this.enableCleanup.checked,
+      provider: this.providerSelect.value as AIProvider,
+      apiKey: this.apiKeyInput.value.trim(),
+    };
+    await chrome.storage.local.set({ cleanupSettings: this.settings });
     this.settingsModal.classList.add("hidden");
   }
 
-  private async handleSaveSettings() {
-    this.cleanupSettings = {
-      enabled: this.enableCleanupCheckbox.checked,
-      provider: this.aiProviderSelect.value as AIProvider,
-      apiKey: this.apiKeyInput.value,
-    };
-
-    await chrome.storage.local.set({ cleanupSettings: this.cleanupSettings });
-    this.closeSettingsModal();
-  }
-
-  private async handleCleanList() {
-    const listText = this.shoppingListInput.value.trim();
+  private async cleanList() {
+    const listText = this.listInput.value.trim();
     if (!listText) {
       alert("Please enter a shopping list first");
       return;
     }
 
+    const { enabled, provider, apiKey } = this.settings;
+    const useAI = enabled && provider !== "none" && Boolean(apiKey);
+
+    this.cleanListBtn.disabled = true;
+    this.setCleanButtonText("Cleaning...");
     try {
-      this.cleanListBtn.disabled = true;
-      this.setCleanButtonText("Cleaning...");
-
       let diff: CleanupDiff;
-
-      // Use AI if enabled and configured
-      if (
-        this.cleanupSettings.enabled &&
-        this.cleanupSettings.provider !== "none" &&
-        this.cleanupSettings.apiKey
-      ) {
-        try {
-          diff = await cleanShoppingListWithAI(
-            listText,
-            this.cleanupSettings.provider,
-            this.cleanupSettings.apiKey
-          );
-        } catch (error) {
-          console.error("AI cleanup failed, falling back to string matching:", error);
-          alert(`AI cleanup failed: ${error instanceof Error ? error.message : "Unknown error"}. Using string matching instead.`);
-          diff = cleanShoppingList(listText);
-        }
-      } else {
-        // Use string matching
+      try {
+        diff = useAI
+          ? await cleanShoppingListWithAI(listText, provider, apiKey)
+          : cleanShoppingList(listText);
+      } catch (error) {
+        alert(`AI cleanup failed: ${errorMessage(error)}\n\nUsing string matching instead.`);
         diff = cleanShoppingList(listText);
       }
-
       this.cleanupDiff = diff;
       this.showCleanupPreview(diff);
-    } catch (error) {
-      console.error("Cleanup failed:", error);
-      alert(`Failed to clean list: ${error instanceof Error ? error.message : "Unknown error"}`);
     } finally {
       this.cleanListBtn.disabled = false;
       this.setCleanButtonText("Clean List");
@@ -306,65 +222,49 @@ class PopupUI {
   }
 
   private setCleanButtonText(text: string) {
-    // Find the span with the text content and update it
-    const textSpan = this.cleanListBtn.querySelector('.btn-text-content');
-    if (textSpan) {
-      textSpan.textContent = text;
+    const label = this.cleanListBtn.querySelector(".btn-text-content");
+    if (label) {
+      label.textContent = text;
     }
   }
 
   private showCleanupPreview(diff: CleanupDiff) {
     const summary = getCleanupSummary(diff);
+    const rows: [string, string | number][] = [
+      ["Method", diff.method === "ai" ? "AI" : "String matching"],
+      ["Total items", summary.total],
+      ["Fixed typos", summary.fixed],
+      ["Standardized", summary.standardized],
+      ["Removed", summary.removed],
+      ["Unchanged", summary.unchanged],
+    ];
+    this.cleanupSummary.innerHTML = rows
+      .map(
+        ([label, value]) => `
+        <div class="cleanup-summary-row">
+          <span class="cleanup-summary-label">${label}:</span>
+          <span class="cleanup-summary-value">${value}</span>
+        </div>`,
+      )
+      .join("");
 
-    // Update summary
-    this.cleanupSummary.innerHTML = `
-      <div class="cleanup-summary-row">
-        <span class="cleanup-summary-label">Method:</span>
-        <span class="cleanup-summary-value">${diff.method === "ai" ? "AI" : "String Matching"}</span>
-      </div>
-      <div class="cleanup-summary-row">
-        <span class="cleanup-summary-label">Total items:</span>
-        <span class="cleanup-summary-value">${summary.total}</span>
-      </div>
-      <div class="cleanup-summary-row">
-        <span class="cleanup-summary-label">Fixed typos:</span>
-        <span class="cleanup-summary-value">${summary.fixed}</span>
-      </div>
-      <div class="cleanup-summary-row">
-        <span class="cleanup-summary-label">Standardized:</span>
-        <span class="cleanup-summary-value">${summary.standardized}</span>
-      </div>
-      <div class="cleanup-summary-row">
-        <span class="cleanup-summary-label">Removed duplicates:</span>
-        <span class="cleanup-summary-value">${summary.removed}</span>
-      </div>
-      <div class="cleanup-summary-row">
-        <span class="cleanup-summary-label">Unchanged:</span>
-        <span class="cleanup-summary-value">${summary.unchanged}</span>
-      </div>
-    `;
-
-    // Update changes list
     this.cleanupChanges.innerHTML = diff.changes
       .map((change) => {
-        const typeClass = `change-${change.type}`;
+        const changed = change.type === "fixed" || change.type === "standardized";
         return `
-          <div class="cleanup-change ${typeClass}">
-            <div class="cleanup-change-header">
-              <span class="cleanup-change-type">${change.type}</span>
-            </div>
-            ${change.type === "removed" ? `
-              <div class="cleanup-change-text">${this.escapeHtml(change.original)}</div>
-            ` : change.type === "unchanged" ? `
-              <div class="cleanup-change-text">${this.escapeHtml(change.original)}</div>
-            ` : `
-              <div class="cleanup-change-text">${this.escapeHtml(change.original)}</div>
-              <div class="cleanup-change-arrow">↓</div>
-              <div class="cleanup-change-text">${this.escapeHtml(change.cleaned)}</div>
-            `}
-            ${change.reason ? `<div class="cleanup-change-reason">${this.escapeHtml(change.reason)}</div>` : ""}
+        <div class="cleanup-change change-${change.type}">
+          <div class="cleanup-change-header">
+            <span class="cleanup-change-type">${change.type}</span>
           </div>
-        `;
+          <div class="cleanup-change-text">${escapeHtml(change.original)}</div>
+          ${
+            changed
+              ? `<div class="cleanup-change-arrow">↓</div>
+                 <div class="cleanup-change-text">${escapeHtml(change.cleaned)}</div>`
+              : ""
+          }
+          ${change.reason ? `<div class="cleanup-change-reason">${escapeHtml(change.reason)}</div>` : ""}
+        </div>`;
       })
       .join("");
 
@@ -376,109 +276,85 @@ class PopupUI {
     this.cleanupDiff = null;
   }
 
-  private handleApplyCleanup() {
-    if (this.cleanupDiff) {
-      const cleanedText = applyCleanup(this.cleanupDiff);
-      this.shoppingListInput.value = cleanedText;
-      this.closeCleanupModal();
-    }
+  private render() {
+    const { isRunning } = this.state;
+    this.startBtn.disabled = isRunning;
+    this.cancelBtn.disabled = !isRunning;
+    this.listInput.disabled = isRunning;
+    this.hebBrandOnly.disabled = isRunning;
+    this.loadExampleBtn.disabled = isRunning;
+    this.cleanListBtn.disabled = isRunning;
+
+    this.renderStatus();
+    this.renderItems();
+    this.renderLogs();
   }
 
-  private updateUI() {
-    this.updateStatus();
-    this.updateButtons();
-    this.updateItems();
-    this.updateLogs();
-  }
-
-  private updateStatus() {
-    const { isRunning, currentItemIndex, items } = this.currentState;
-
+  private renderStatus() {
+    const { isRunning, currentItemIndex, items } = this.state;
     if (isRunning) {
-      this.statusBadge.textContent = `Status: Running (${currentItemIndex + 1}/${items.length})`;
+      this.statusBadge.textContent = `Running (${Math.min(currentItemIndex + 1, items.length)}/${items.length})`;
       this.statusBadge.className = "status-badge status-running";
     } else if (items.length > 0) {
-      const completed = items.filter((i) => i.state === "completed").length;
-      const errors = items.filter((i) => i.state === "error").length;
-      this.statusBadge.textContent = `Status: Completed (${completed} items, ${errors} errors)`;
+      const added = items.filter((i) => i.state === "completed").length;
+      const failed = items.filter((i) => i.state === "error").length;
+      this.statusBadge.textContent = `Done: ${added} added, ${failed} failed`;
       this.statusBadge.className = "status-badge status-completed";
     } else {
-      this.statusBadge.textContent = "Status: Idle";
+      this.statusBadge.textContent = "Idle";
       this.statusBadge.className = "status-badge status-idle";
     }
   }
 
-  private updateButtons() {
-    const { isRunning } = this.currentState;
-
-    this.startBtn.disabled = isRunning;
-    this.cancelBtn.disabled = !isRunning;
-    this.shoppingListInput.disabled = isRunning;
-    this.hebBrandOnlyCheckbox.disabled = isRunning;
-    this.loadExampleBtn.disabled = isRunning;
-  }
-
-  private updateItems() {
-    const { items, isRunning, currentItemIndex } = this.currentState;
-
-    this.itemCount.textContent = `${items.length} items`;
+  private renderItems() {
+    const { items, isRunning, currentItemIndex } = this.state;
+    this.itemCount.textContent = `${items.length} ${items.length === 1 ? "item" : "items"}`;
 
     if (items.length === 0) {
       this.itemsList.innerHTML =
         '<div class="empty-state">Items will appear once you start shopping</div>';
+      this.lastScrolledIndex = -1;
       return;
     }
 
     this.itemsList.innerHTML = items
-      .map((itemState, index) => {
-        const { item, state, detail, error } = itemState;
-        const stateClass = `state-${state}`;
-        const isCurrentItem = isRunning && index === currentItemIndex;
-
+      .map(({ item, state, detail, error }, index) => {
+        const active = isRunning && index === currentItemIndex;
+        const quantity = item.quantity ? `${item.quantity}${item.unit ? ` ${item.unit}` : ""}` : "";
         return `
-        <div class="item-card ${isCurrentItem ? 'item-card-active' : ''}" data-item-index="${index}">
+        <div class="item-card ${active ? "item-card-active" : ""}" data-item-index="${index}">
           <div class="item-header">
-            <div class="item-name">${this.escapeHtml(item.name)}</div>
-            <span class="state-badge ${stateClass}">${state.replace(/-/g, " ")}</span>
+            <div class="item-name">${escapeHtml(item.name)}</div>
+            <span class="state-badge state-${state}">${state.replace(/-/g, " ")}</span>
           </div>
-          ${item.category ? `<div class="item-category">${this.escapeHtml(item.category)}</div>` : ""}
-          ${item.quantity ? `<div class="item-quantity">${item.quantity}${item.unit ? ` ${item.unit}` : ""}</div>` : ""}
-          ${item.notes ? `<div class="item-notes">${this.escapeHtml(item.notes)}</div>` : ""}
-          ${detail ? `<div class="item-detail">${this.escapeHtml(detail)}</div>` : ""}
-          ${error ? `<div class="item-error">${this.escapeHtml(error)}</div>` : ""}
-        </div>
-      `;
+          ${item.category ? `<div class="item-category">${escapeHtml(item.category)}</div>` : ""}
+          ${quantity ? `<div class="item-quantity">${escapeHtml(quantity)}</div>` : ""}
+          ${item.notes ? `<div class="item-notes">${escapeHtml(item.notes)}</div>` : ""}
+          ${detail ? `<div class="item-detail">${escapeHtml(detail)}</div>` : ""}
+          ${error ? `<div class="item-error">${escapeHtml(error)}</div>` : ""}
+        </div>`;
       })
       .join("");
 
-    // Auto-scroll to the current item being processed
-    if (isRunning && currentItemIndex >= 0 && currentItemIndex < items.length) {
-      // Use setTimeout to ensure DOM has updated
-      setTimeout(() => {
-        const currentCard = this.itemsList.querySelector(`[data-item-index="${currentItemIndex}"]`);
-        if (currentCard) {
-          currentCard.scrollIntoView({ 
-            behavior: "smooth", 
-            block: "center",
-            inline: "nearest"
-          });
-        }
-      }, 100);
+    // Only scroll when the active item changes, so the user can scroll freely otherwise.
+    if (isRunning && currentItemIndex !== this.lastScrolledIndex) {
+      this.lastScrolledIndex = currentItemIndex;
+      this.itemsList
+        .querySelector(`[data-item-index="${currentItemIndex}"]`)
+        ?.scrollIntoView({ behavior: "smooth", block: "center" });
     }
   }
 
-  private updateLogs() {
-    const { logs } = this.currentState;
-
+  private renderLogs() {
+    const { logs } = this.state;
     if (logs.length === 0) {
       this.logsList.innerHTML = '<div class="empty-state">Logs will appear here</div>';
       return;
     }
 
-    // Show latest 50 logs
-    const recentLogs = logs.slice(-50).reverse();
-
-    this.logsList.innerHTML = recentLogs
+    this.logsList.innerHTML = logs
+      .slice(-50)
+      .reverse()
       .map((log) => {
         const time = new Date(log.timestamp).toLocaleTimeString([], {
           hour: "2-digit",
@@ -488,24 +364,11 @@ class PopupUI {
         return `
         <div class="log-entry log-${log.level}">
           <span class="log-time">${time}</span>
-          <span class="log-message">${this.escapeHtml(log.message)}</span>
-        </div>
-      `;
+          <span class="log-message">${escapeHtml(log.message)}</span>
+        </div>`;
       })
       .join("");
   }
-
-  private escapeHtml(text: string): string {
-    const div = document.createElement("div");
-    div.textContent = text;
-    return div.innerHTML;
-  }
 }
 
-// Initialize when DOM is ready
-if (document.readyState === "loading") {
-  document.addEventListener("DOMContentLoaded", () => new PopupUI());
-} else {
-  new PopupUI();
-}
-
+new PanelUI();

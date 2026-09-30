@@ -1,12 +1,13 @@
 # Project Context
 
 ## Purpose
-HEB Grocery Agent is a Chrome extension that automates grocery shopping on HEB.com. It provides intelligent list cleanup using both string similarity matching and AI-powered processing, then automates the shopping process by parsing grocery lists and adding items to the HEB cart automatically. The goal is to save users 70% of their shopping time while maintaining accuracy and providing smart cleanup features.
+HEB Grocery Agent is a Chrome extension that automates grocery shopping on HEB.com. It provides intelligent list cleanup using both string similarity matching and AI-powered processing, then automates the shopping process by parsing grocery lists and adding items to the HEB cart automatically.
 
 ## Tech Stack
 - **Frontend**: TypeScript, HTML5, CSS3, Chrome Extension APIs (Manifest V3)
-- **Build Tools**: esbuild, npm
-- **Libraries**: string-similarity (for fuzzy matching), Chrome APIs
+- **Build Tools**: Node 22, esbuild (`extension/scripts/build.mjs`), npm workspaces
+- **Testing**: Vitest unit tests for the pure modules (`src/*.test.ts`), GitHub Actions CI
+- **Libraries**: none at runtime; fuzzy matching lives in `src/similarity.ts`
 - **AI Integration**: OpenAI API, Anthropic API, Groq API (optional)
 - **Styling**: Custom CSS with HEB brand colors (#e1251b primary)
 - **Architecture**: Chrome Extension with background service worker, content script, and side panel UI
@@ -23,12 +24,13 @@ HEB Grocery Agent is a Chrome extension that automates grocery shopping on HEB.c
 
 ### Architecture Patterns
 - **Separation of Concerns**: Clear separation between UI (popup.ts), business logic (listCleaner.ts, aiCleaner.ts), and types (types.ts)
-- **Chrome Extension MV3**: Background service worker, content script injection, side panel UI
+- **Chrome Extension MV3**: Background service worker owns run state and drives navigation; the content script is stateless and handles one item per page; side panel UI
 - **Modular Design**: Each feature (AI cleanup, string matching, automation) in separate modules
 - **Configuration Management**: Settings stored in chrome.storage.local
 - **Event-Driven**: UI events trigger appropriate business logic functions
 
 ### Testing Strategy
+- **Unit Tests**: `npm run check` runs typecheck, Vitest and a build; keep DOM-free logic in pure modules so it can be tested
 - **Manual Testing**: Comprehensive testing on HEB.com with various list formats
 - **Error Scenarios**: Testing with invalid API keys, network failures, empty lists
 - **Cross-Browser**: Primary focus on Chrome, compatibility with other Chromium browsers
@@ -38,7 +40,7 @@ HEB Grocery Agent is a Chrome extension that automates grocery shopping on HEB.c
 ### Git Workflow
 - **Branching**: Feature branches for new functionality (e.g., list-intelligence)
 - **Commits**: Descriptive commit messages with clear feature descriptions
-- **Versioning**: Semantic versioning (currently v1.0.0)
+- **Versioning**: Semantic versioning; the version lives in `extension/package.json` only (see RELEASING.md)
 - **Documentation**: README updates for each major feature addition
 
 ## Domain Context
@@ -59,9 +61,8 @@ HEB Grocery Agent is a Chrome extension that automates grocery shopping on HEB.c
 ## External Dependencies
 - **HEB.com**: Primary target website for automation
 - **AI Providers**: 
-  - OpenAI API (gpt-4o-mini, gpt-3.5-turbo)
-  - Anthropic API (claude-3-5-sonnet-20241022)
-  - Groq API (llama-3.3-70b-versatile, llama-3.1-70b-versatile, mixtral-8x7b-32768)
+  - OpenAI API (gpt-5-mini)
+  - Anthropic API (claude-opus-5-5)
+  - Groq API (llama-3.3-70b-versatile)
 - **Chrome APIs**: chrome.tabs, chrome.storage, chrome.action, chrome.sidePanel
-- **npm Packages**: string-similarity for fuzzy matching
-- **Build Dependencies**: esbuild for TypeScript compilation and bundling
+- **Build Dependencies**: esbuild, TypeScript, Vitest

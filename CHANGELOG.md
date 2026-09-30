@@ -5,6 +5,46 @@ All notable changes to HEB Grocery Agent will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.1.0] - 2026-09-30
+
+### Fixed
+- **Runs no longer double-add, stall or leak into each other.** The background
+  worker now drives the whole run and the content script only handles one item
+  per page. Previously the content script kept its own copy of the run in
+  storage, so a second heb.com tab or a re-injected script could process the
+  same list twice.
+- Closing the heb.com tab stops the run immediately instead of failing each
+  remaining item.
+- Cancelling or starting a new run can no longer write stale results into the
+  new run.
+- Page loads and "Add to cart" now time out instead of waiting forever.
+- If Chrome restarts the service worker mid-run, the panel says the run was
+  interrupted instead of showing it as running.
+- Items whose "Add to cart" button is disabled (out of stock) are reported as
+  unavailable instead of "added".
+- String-matching cleanup now catches duplicates hidden by a typo
+  (`bnananas` and `bananas`).
+- "Clear" in the log now actually clears it; before, the log came back on the
+  next update.
+
+### Changed
+- AI cleanup models updated: OpenAI `gpt-5-mini`, Anthropic `claude-opus-5-5`,
+  Groq `llama-3.3-70b-versatile`. The retired fallback models were removed.
+  Requests time out after 60 seconds, and error messages name the cause
+  (bad key, rate limit, etc.).
+- Your list is saved as you type and restored when the panel reopens.
+- Removed the `activeTab` and `scripting` permissions, which are no longer
+  needed.
+- Requires Chrome 116 or later.
+
+### Development
+- Node 22, esbuild 0.28, Vitest unit tests, and a GitHub Actions workflow that
+  typechecks, tests and uploads the store zip for every PR.
+- `npm run package` builds the Chrome Web Store zip. The version is set in
+  `extension/package.json` only. See `RELEASING.md`.
+- Replaced the unmaintained `string-similarity` dependency with a small
+  local implementation.
+
 ## [1.0.1] - 2026-01-27
 
 ### Fixed
@@ -98,9 +138,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Version History
 
+- **1.1.0** (2026-09-30) - Reliability rewrite of the shopping loop, updated AI models, CI and release tooling
 - **1.0.1** (2026-01-27) - Bug fixes: Claude API key usage, stuck-state reset, smarter search
 - **1.0.0** (2025-10-21) - Initial release
 
+[1.1.0]: https://github.com/michellemayes/heb-grocery-agent/releases/tag/v1.1.0
 [1.0.1]: https://github.com/michellemayes/heb-grocery-agent/releases/tag/v1.0.1
 [1.0.0]: https://github.com/michellemayes/heb-grocery-agent/releases/tag/v1.0.0
 

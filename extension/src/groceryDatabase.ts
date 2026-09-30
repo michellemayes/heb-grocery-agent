@@ -290,11 +290,3 @@ export function normalizeGroceryName(name: string): string {
     .replace(/\b(the|a|an)\b/g, "") // remove articles
     .trim();
 }
-
-/**
- * Get all grocery items as normalized strings for matching
- */
-export function getNormalizedDatabase(): string[] {
-  return GROCERY_DATABASE.map(normalizeGroceryName);
-}
-
