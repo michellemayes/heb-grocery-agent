@@ -109,7 +109,7 @@ extension/
 
 The background worker navigates the heb.com tab to each search page, waits for it to load, then asks the content script to add the best match. The content script keeps no state, so page reloads can't leave a run half-finished. Each step has a timeout, and every run has an ID so a cancelled or replaced run stops itself.
 
-Releasing is covered in [RELEASING.md](RELEASING.md): bump the version, merge, and push a `v<version>` tag to publish to the Chrome Web Store. Changes are recorded in [CHANGELOG.md](CHANGELOG.md), and the store listing copy lives in [STORE_LISTING.md](STORE_LISTING.md).
+Releasing is covered in [RELEASING.md](RELEASING.md): bump the version in `extension/package.json` and merge, and the new version is published to the Chrome Web Store. Changes are recorded in [CHANGELOG.md](CHANGELOG.md), and the store listing copy lives in [STORE_LISTING.md](STORE_LISTING.md).
 
 ## Privacy
 
