@@ -69,6 +69,8 @@ export interface CleanupSettings {
   enabled: boolean;
   provider: AIProvider;
   apiKey: string;
+  /** Model id for the provider; unset means the provider's cheapest model. */
+  model?: string;
 }
 
 export type CleanupChangeType = "fixed" | "removed" | "standardized" | "unchanged";

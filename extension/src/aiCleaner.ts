@@ -4,9 +4,52 @@ import type { AIProvider, CleanupChange, CleanupDiff } from "./types";
 const REQUEST_TIMEOUT_MS = 60_000;
 const MAX_OUTPUT_TOKENS = 4000;
 
-const OPENAI_MODEL = "gpt-5-mini";
-const GROQ_MODEL = "llama-3.3-70b-versatile";
-const ANTHROPIC_MODEL = "claude-opus-5-5";
+export interface AIModelOption {
+  id: string;
+  label: string;
+  /** Provider-specific request fields sent alongside the model id. */
+  params: Record<string, unknown>;
+  /** Anthropic only: extra beta headers the params need. */
+  betas?: string[];
+}
+
+/**
+ * Models offered per provider, cheapest first. The first entry is the
+ * default, since cleaning a grocery list is a simple task.
+ */
+export const AI_MODELS: Record<Exclude<AIProvider, "none">, AIModelOption[]> = {
+  groq: [
+    { id: "llama-3.1-8b-instant", label: "Llama 3.1 8B (fastest, cheapest)", params: { temperature: 0.2 } },
+    { id: "openai/gpt-oss-20b", label: "GPT-OSS 20B", params: { temperature: 0.2 } },
+    { id: "llama-3.3-70b-versatile", label: "Llama 3.3 70B", params: { temperature: 0.2 } },
+  ],
+  openai: [
+    { id: "gpt-5-nano", label: "GPT-5 nano (cheapest)", params: { reasoning_effort: "minimal" } },
+    { id: "gpt-5-mini", label: "GPT-5 mini", params: { reasoning_effort: "minimal" } },
+  ],
+  anthropic: [
+    // Haiku 4.5 does not accept the effort or fallbacks parameters.
+    { id: "claude-haiku-4-5", label: "Claude Haiku 4.5 (cheapest, $1/$5 per M tokens)", params: {} },
+    {
+      id: "claude-sonnet-5-5",
+      label: "Claude Sonnet 5.5 ($2/$10 per M tokens)",
+      params: { output_config: { effort: "low" }, fallbacks: "default" },
+      betas: ["server-side-fallback-2026-07-01"],
+    },
+    {
+      id: "claude-opus-5-5",
+      label: "Claude Opus 5.5 ($4/$20 per M tokens)",
+      params: { output_config: { effort: "low" }, fallbacks: "default" },
+      betas: ["server-side-fallback-2026-07-01"],
+    },
+  ],
+};
+
+/** The configured model for a provider, falling back to its cheapest option. */
+export function resolveModel(provider: Exclude<AIProvider, "none">, modelId?: string): AIModelOption {
+  const options = AI_MODELS[provider];
+  return options.find((option) => option.id === modelId) ?? options[0];
+}
 
 const CLEANUP_PROMPT = `Clean up this grocery list so that the first search result on a grocery store's website is very likely the item the shopper meant.
 
@@ -27,7 +70,12 @@ export async function cleanShoppingListWithAI(
   listText: string,
   provider: AIProvider,
   apiKey: string,
+  modelId?: string,
 ): Promise<CleanupDiff> {
+  if (provider === "none") {
+    throw new Error("No AI provider configured");
+  }
+  const model = resolveModel(provider, modelId);
   const prompt = `${CLEANUP_PROMPT}\n\n${listText}`;
 
   let cleanedText: string;
@@ -37,7 +85,7 @@ export async function cleanShoppingListWithAI(
         "OpenAI",
         "https://api.openai.com/v1/chat/completions",
         apiKey,
-        { model: OPENAI_MODEL, reasoning_effort: "minimal" },
+        { model: model.id, ...model.params },
         prompt,
       );
       break;
@@ -46,12 +94,12 @@ export async function cleanShoppingListWithAI(
         "Groq",
         "https://api.groq.com/openai/v1/chat/completions",
         apiKey,
-        { model: GROQ_MODEL, temperature: 0.2 },
+        { model: model.id, ...model.params },
         prompt,
       );
       break;
     case "anthropic":
-      cleanedText = await completeAnthropic(apiKey, prompt);
+      cleanedText = await completeAnthropic(apiKey, model, prompt);
       break;
     default:
       throw new Error("No AI provider configured");
@@ -86,23 +134,26 @@ async function completeOpenAICompatible(
   return content;
 }
 
-async function completeAnthropic(apiKey: string, prompt: string): Promise<string> {
+async function completeAnthropic(
+  apiKey: string,
+  model: AIModelOption,
+  prompt: string,
+): Promise<string> {
   const data = await postJson(
     "Anthropic",
     "https://api.anthropic.com/v1/messages",
     {
       "x-api-key": apiKey,
       "anthropic-version": "2023-06-01",
-      "anthropic-beta": "server-side-fallback-2026-07-01",
+      ...(model.betas?.length ? { "anthropic-beta": model.betas.join(",") } : {}),
       // Required for requests sent straight from the browser; without it the
       // request is blocked by CORS and never reaches the API.
       "anthropic-dangerous-direct-browser-access": "true",
     },
     {
-      model: ANTHROPIC_MODEL,
+      model: model.id,
       max_tokens: MAX_OUTPUT_TOKENS,
-      output_config: { effort: "low" },
-      fallbacks: "default",
+      ...model.params,
       messages: [{ role: "user", content: prompt }],
     },
   );

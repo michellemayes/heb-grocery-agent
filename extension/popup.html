@@ -128,10 +128,18 @@ Example:
             <label class="setting-label">AI Provider</label>
             <select id="aiProviderSelect" class="setting-input">
               <option value="none">None (String Matching Only)</option>
-              <option value="groq">Groq (Llama 3.3, free tier)</option>
-              <option value="openai">OpenAI (GPT-5 mini)</option>
-              <option value="anthropic">Anthropic (Claude Opus 5.5)</option>
+              <option value="groq">Groq (free tier)</option>
+              <option value="openai">OpenAI</option>
+              <option value="anthropic">Anthropic (Claude)</option>
             </select>
+          </div>
+
+          <div class="setting-group" id="modelGroup" hidden>
+            <label class="setting-label" for="aiModelSelect">Model</label>
+            <select id="aiModelSelect" class="setting-input"></select>
+            <p class="setting-description">
+              Cleaning a list is a simple task, so the cheapest model usually does fine
+            </p>
           </div>
 
           <div class="setting-group" id="apiKeyGroup" hidden>
