@@ -1,273 +1,118 @@
-# HEB Grocery Agent - Chrome Extension
+# HEB Grocery Agent
 
-A Chrome extension that automates your HEB grocery shopping. Simply paste your grocery list, and the extension will search for items and add them to your cart on HEB.com.
+A Chrome extension that takes a free-form grocery list and adds each item to your HEB.com cart. It searches for each item, picks the result whose name best matches, and clicks "Add to cart". You review the cart and check out yourself.
 
-## Features
+## Install from source
 
-- 📝 **Free-form list parsing** - Supports section headers (e.g., `[Produce]`), quantities (`1/2 cup`, `2 lbs`), and notes (`(finely chopped)`)
-- ✨ **Smart list cleanup** - AI-powered or string-based typo fixing, name standardization, and duplicate removal
-  - 🤖 **AI Options**: Groq (free), OpenAI (GPT-4), or Anthropic (Claude)
-  - 🔤 **String Matching**: Works without AI using a 1000+ item grocery database
-  - 👀 **Preview Changes**: See before/after diff before applying
-- 🛒 **Automated shopping** - Searches for items and adds them to your cart automatically
-- 📊 **Real-time progress** - Watch the extension work with live status updates
-- 📱 **Side Panel UI** - Resizable panel that stays open while you shop
-- 🎯 **Easy to use** - Modern interface with one-click shopping
+Requires Node.js 22+ and Chrome 116+.
 
-## Installation
-
-### Prerequisites
-
-- Node.js 18+ and npm
-- Google Chrome browser
-- An HEB.com account
-
-### Build the Extension
-
-1. **Clone and install dependencies:**
-
-   ```bash
-   git clone <repository-url>
-   cd heb-grocery-agent
-   npm install
-   ```
-
-2. **Build the extension:**
-
-   ```bash
-   npm run build
-   ```
-
-   This will create a `extension/dist` folder with the compiled extension.
-
-3. **Load the extension in Chrome:**
-
-   - Open Chrome and go to `chrome://extensions/`
-   - Enable "Developer mode" (toggle in the top right)
-   - Click "Load unpacked"
-   - Select the `extension/dist` folder
-   - The HEB Grocery Agent extension should now appear in your extensions list
-
-## Usage
-
-1. **Open the extension:**
-   - Navigate to https://www.heb.com and sign in
-   - Click the HEB Grocery Agent icon in your Chrome toolbar
-   - The side panel will open on the right side
-   - **Tip:** Drag the left edge to resize the panel
-
-2. **Set up Smart Cleanup (Optional):**
-   - Click the ⚙️ settings icon
-   - Enable "Smart Cleanup"
-   - Choose an AI provider:
-     - **Groq** (recommended) - Free tier, super fast
-     - **OpenAI** - Requires paid account
-     - **Anthropic** - Requires paid account
-     - **None** - Uses string matching (offline)
-   - Enter your API key if using AI
-   - Save settings
-
-3. **Prepare your shopping list:**
-   - Paste or type your grocery list in the text area
-   - The extension supports various formats:
-
-   ```
-   [Produce]
-   1 large Sweet Onion (finely chopped)
-   2 cups Carrots (shredded)
-   
-   [Dairy]
-   1 cup Milk
-   2 lbs Butter
-   
-   [Other]
-   Eggs
-   Bread
-   ```
-
-4. **Clean your list (Optional but Recommended):**
-   - Click the ✨ "Clean List" button (magic wand icon)
-   - Review the preview showing:
-     - ✅ Fixed typos (e.g., "bnanana" → "banana")
-     - 📝 Standardized names (e.g., "Roma Tomatoes" → "tomatoes")
-     - ❌ Removed duplicates
-   - Click "Apply Changes" to update your list
-   - See [CLEANUP_FEATURES.md](CLEANUP_FEATURES.md) for full details
-
-5. **Start shopping:**
-   - Click "Start Shopping" in the side panel
-   - The extension will navigate through HEB.com, search for each item, and add them to your cart
-   - Watch the progress in real-time through the side panel
-   - The panel stays open so you can monitor progress
-   - You can cancel the run at any time by clicking "Cancel"
-
-6. **Review and checkout:**
-   - Once the shopping run completes, review your cart on HEB.com
-   - Remove any incorrect items or adjust quantities
-   - Proceed to checkout as normal
-
-## Development
-
-### Project Structure
-
-```
-extension/
-├── manifest.json          # Chrome extension manifest
-├── popup.html            # Extension popup UI
-├── popup.css             # Popup styles
-├── src/
-│   ├── popup.ts          # Popup logic
-│   ├── background.ts     # Service worker (coordinates shopping)
-│   ├── content-script.ts # Interacts with HEB.com pages
-│   ├── listParser.ts     # Parses grocery lists
-│   └── types.ts          # TypeScript types
-└── icons/                # Extension icons
+```bash
+git clone https://github.com/michellemayes/heb-grocery-agent.git
+cd heb-grocery-agent
+npm install
+npm run build
 ```
 
-### Development Commands
+Then in Chrome:
 
-- `npm run dev` - Build and watch for changes
-- `npm run build` - Build the extension for production
-- `npm run clean` - Clean build artifacts
+1. Open `chrome://extensions` and turn on **Developer mode**.
+2. Click **Load unpacked** and choose the `extension/dist` folder.
 
-### How It Works
+After pulling new changes, run `npm run build` again and click the reload icon on the extension's card.
 
-1. **List Parsing**: The extension parses your free-form grocery list into structured items with names, quantities, units, and notes
-2. **Smart Cleanup** (Optional): 
-   - Uses AI (Groq/OpenAI/Anthropic) or string-similarity matching
-   - Fixes typos against a 1000+ item grocery database
-   - Standardizes names and removes duplicates
-   - Shows preview before applying changes
-3. **Background Coordination**: A service worker manages the shopping state and coordinates between the side panel and content script
-4. **Content Script**: Injected into HEB.com pages, it performs the actual automation:
-   - Searches for each item
-   - Finds product cards on search results
-   - Clicks "Add to Cart" buttons
-5. **Real-time Updates**: Progress is communicated back to the side panel for live status display
-6. **Side Panel**: Resizable panel stays open while you shop, providing easy monitoring and control
+## Use it
 
-## List Format
+1. Sign in on heb.com and pick your store.
+2. Click the extension icon to open the side panel.
+3. Paste your list and click **Start Shopping**.
 
-The parser is flexible and supports multiple formats:
+The agent reuses an open heb.com tab (or opens one) and works through the list. Each item shows its status in the panel. Items that couldn't be added are marked with the reason, so you can add them by hand. Your list is kept between sessions.
 
-### Section Headers
+- **Cancel** stops after the current step.
+- **Reset** clears the items and log. Use it if anything looks stuck. Starting a new run also replaces any previous one.
+- Closing the heb.com tab stops the run.
+
+### List format
+
+Most formats work. Section headers, quantities, bullets and notes are all understood:
+
 ```
 [Produce]
-[Dairy]
-[Canned Goods & Soups]
-```
-
-### Quantities and Units
-```
-1 cup Milk
-2 lbs Chicken
-1/2 cup Butter
-1 1/2 cups Sugar
-```
-
-Supported units: cup, tsp, tbsp, oz, lb, g, kg, bag, can, pkg, bottle, count
-
-### Bullets and Numbering
-```
-- Eggs
-* Bread
-• Cheese
-1. Milk
-2. Butter
-```
-
-### Notes
-```
 1 large Sweet Onion (finely chopped)
-Chicken (rotisserie)
+2 cups Carrots
+
+[Dairy]
+- Milk
+1/2 cup Butter
 ```
 
-## Smart Cleanup Features
+Before searching, each item is reduced to a search term: `One head of kale, chard, or collards` searches for `kale`, `Chicken or Veg Broth` for `Chicken Broth`, and `2 cloves garlic (minced)` for `garlic`.
 
-The extension includes intelligent list cleanup with multiple options:
+Units understood: cup, tsp, tbsp, oz, lb, g, kg, bag, can, pkg, bottle, count and their plurals.
 
-### String Matching (No API Required)
-- Works completely offline
-- Uses fuzzy matching against 1000+ common grocery items
-- 70% similarity threshold for typo detection
-- Free and fast
+### Clean List
 
-### AI-Powered (Optional)
-- **Groq** (Recommended): Free tier, super fast, uses Llama 3.3
-  - Get API key: https://console.groq.com/
-- **OpenAI**: Uses GPT-4o-mini
-  - Requires paid account with billing
-- **Anthropic**: Uses Claude
-  - Requires paid account
+**Clean List** suggests fixes (typos, duplicates, inconsistent names) and shows a before/after preview. Nothing changes until you click **Apply Changes**.
 
-All methods show a preview before applying changes. See [CLEANUP_FEATURES.md](CLEANUP_FEATURES.md) for full documentation.
+By default it matches items against a built-in list of about 1,000 groceries, which works offline. To use an AI model instead, open Settings, turn on **Use AI for Clean List**, pick a provider and paste an API key:
+
+| Provider  | Model                     | Get a key                               |
+| --------- | ------------------------- | --------------------------------------- |
+| Groq      | `llama-3.3-70b-versatile` | https://console.groq.com (free tier)    |
+| OpenAI    | `gpt-5-mini`              | https://platform.openai.com/api-keys    |
+| Anthropic | `claude-opus-5-5`         | https://console.anthropic.com           |
+
+If the AI request fails, Clean List falls back to string matching and tells you why.
 
 ## Limitations
 
-- **Product selection**: The extension currently selects the first available search result. You may need to adjust items in your cart.
-- **Bot detection**: HEB.com may occasionally challenge automated sessions. The extension works directly in your browser, so it's less likely to be blocked than headless automation.
-- **Manual setup required**: You must be signed in and have your store/preferences set before running the extension.
-- **Error handling**: Unexpected modals (age verification, substitutions) may cause the automation to fail. Check the logs and manually intervene if needed.
+- The agent adds one of each item. It does not set quantities in the cart.
+- It relies on heb.com's page structure. If HEB changes its markup, items will start failing with "Timed out waiting for search results" or "No Add to cart button" until the selectors in `extension/src/content-script.ts` are updated.
+- Age checks, substitution prompts and other pop-ups are not handled.
+- The "HEB brand only" option relies on a heb.com search filter that may change.
 
 ## Troubleshooting
 
-**Extension doesn't load:**
-- Make sure you built the extension (`npm run build`)
-- Check that you're loading the `extension/dist` folder, not the `extension` folder
-- Ensure icons are present in `extension/dist/icons/`
+**Every item fails.** Make sure you're signed in on heb.com, then reload the heb.com tab and try again. If it keeps failing, HEB's page layout has probably changed; please open an issue.
 
-**Side panel doesn't open:**
-- Click the extension icon in your toolbar
-- Make sure you've reloaded the extension after building
-- Check Chrome's developer console for errors
+**The side panel doesn't open.** Reload the extension from `chrome://extensions`. Make sure you loaded `extension/dist`, not `extension`.
 
-**AI cleanup not working:**
-- Verify your API key is correct and has the right format:
-  - Groq: `gsk_...`
-  - OpenAI: `sk-...` or `sk-proj-...`
-  - Anthropic: `sk-ant-...`
-- Groq free tier is recommended for most users
-- OpenAI requires prepaid credits or billing setup
-- String matching works offline if AI fails
-- **Note:** AI cleanup only runs when you click **Clean List** — it improves the
-  list before shopping, it does not run automatically during a shopping run.
-- After updating the extension, fully reload it from `chrome://extensions/` so
-  the new permissions (needed to reach the AI providers) take effect.
+**AI cleanup fails.** Check that the key belongs to the provider you selected and that the account has credit. The error message includes the provider's own reason.
 
-**Extension stuck or won't start a new run:**
-- Click the **Reset** button in the side panel. It clears the agent's state and
-  is always available, even if a previous run got stuck (e.g. the HEB tab was
-  closed mid-run). You should no longer need to remove and re-install the
-  extension to recover.
+## Development
 
-**Shopping doesn't start:**
-- Make sure you're on HEB.com when you click "Start Shopping"
-- Check that you're signed in to your HEB account
-- Look at the logs in the side panel for error messages
+```bash
+npm run dev        # rebuild on change
+npm run check      # typecheck, unit tests and a build (what CI runs)
+npm run package    # build and zip into release/ for the Chrome Web Store
+```
 
-**Items aren't being added:**
-- HEB.com's page structure may have changed
-- Check the browser console (F12) for errors
-- The extension may need updates to match new selectors
+```
+extension/
+├── manifest.json        # MV3 manifest (version comes from extension/package.json)
+├── popup.html/.css      # side panel UI
+├── scripts/             # build and packaging scripts
+└── src/
+    ├── background.ts     # service worker: runs the shopping loop, owns all state
+    ├── content-script.ts # on heb.com: finds the best result and clicks Add to cart
+    ├── popup.ts          # side panel
+    ├── searchQuery.ts    # list item -> search term, result scoring
+    ├── listParser.ts     # free-form list -> structured items
+    ├── listCleaner.ts    # offline Clean List
+    ├── aiCleaner.ts      # AI Clean List
+    └── *.test.ts         # unit tests (Vitest)
+```
 
-**Extension is too fast/slow:**
-- Adjust the delay values in `content-script.ts` if needed
-- The default includes small delays between items to avoid overwhelming the site
+The background worker navigates the heb.com tab to each search page, waits for it to load, then asks the content script to add the best match. The content script keeps no state, so page reloads can't leave a run half-finished. Each step has a timeout, and every run has an ID so a cancelled or replaced run stops itself.
 
-## Privacy & Terms
+Releasing a new version to the Chrome Web Store is covered in [RELEASING.md](RELEASING.md).
 
-- This extension operates entirely in your browser
-- All data is stored locally on your device
-- API keys (if used) are only sent to your chosen AI provider
-- No tracking, analytics, or data collection
-- See [PRIVACY.md](PRIVACY.md) for full privacy policy
-- Use responsibly and in accordance with HEB's Terms of Service
-- The extension is provided as-is with no warranties
+## Privacy
+
+Everything stays in your browser. Your list is sent only to heb.com (as searches) and, if you turn on AI cleanup, to the provider you chose. See [PRIVACY.md](PRIVACY.md).
+
+This is a personal automation tool, not affiliated with H-E-B. Use it in line with HEB's terms of service and always review your cart before checkout.
 
 ## License
 
 MIT
-
----
-
-**Note**: This is a personal automation tool. HEB may update their website at any time, which could break the extension. Use at your own discretion and always review your cart before checkout.

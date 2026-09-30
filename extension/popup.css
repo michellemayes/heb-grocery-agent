@@ -637,3 +637,7 @@ button:disabled {
   font-style: italic;
 }
 
+
+[hidden] {
+  display: none !important;
+}

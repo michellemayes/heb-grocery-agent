@@ -1,16 +1,11 @@
 {
   "manifest_version": 3,
   "name": "HEB Grocery Agent",
-  "version": "1.0.1",
-  "description": "Automate your HEB grocery shopping with AI-powered list cleanup and smart automation. Save 70% of your shopping time.",
+  "description": "Paste a grocery list and add every item to your HEB.com cart. Optional AI cleanup fixes typos and duplicates first.",
   "author": "Michelle Mayes",
   "homepage_url": "https://github.com/michellemayes/heb-grocery-agent",
-  "permissions": [
-    "activeTab",
-    "storage",
-    "scripting",
-    "sidePanel"
-  ],
+  "minimum_chrome_version": "116",
+  "permissions": ["storage", "sidePanel"],
   "host_permissions": [
     "https://www.heb.com/*",
     "https://api.anthropic.com/*",
@@ -29,7 +24,8 @@
     "128": "icons/icon128.png"
   },
   "background": {
-    "service_worker": "background.js"
+    "service_worker": "background.js",
+    "type": "module"
   },
   "content_scripts": [
     {
@@ -39,4 +35,3 @@
     }
   ]
 }
-

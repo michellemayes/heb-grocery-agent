@@ -49,7 +49,7 @@ const QUANTITY_UNIT_REGEX = new RegExp(
 
 const BULLET_PREFIX = /^\s*(?:[-*•+]\s+|\d+[.)]\s+)?/;
 
-const GENERIC_SECTION_HEADERS = new Set([
+export const GENERIC_SECTION_HEADERS = new Set([
   "groceries",
   "grocery list",
   "shopping list",

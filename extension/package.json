@@ -1,24 +1,21 @@
 {
   "name": "heb-grocery-extension",
-  "version": "1.0.0",
-  "description": "Chrome extension to automate HEB grocery shopping",
+  "version": "1.1.0",
+  "description": "Chrome extension that adds a grocery list to your HEB.com cart",
   "private": true,
+  "type": "module",
   "scripts": {
-    "build": "npm run clean && npm run build:ts && npm run copy:assets",
-    "build:ts": "esbuild src/content-script.ts src/background.ts src/popup.ts --bundle --outdir=dist --format=esm --platform=browser --target=chrome96",
-    "copy:assets": "cp manifest.json dist/ && cp popup.html dist/ && cp popup.css dist/ && mkdir -p dist/icons && cp icons/*.png dist/icons/ 2>/dev/null || true && cp icons/*.svg dist/icons/ 2>/dev/null || true",
-    "clean": "rm -rf dist && mkdir -p dist",
-    "watch": "npm run clean && npm run copy:assets && esbuild src/content-script.ts src/background.ts src/popup.ts --bundle --outdir=dist --format=esm --platform=browser --target=chrome96 --watch",
-    "dev": "npm run watch"
-  },
-  "dependencies": {
-    "string-similarity": "^4.0.4"
+    "build": "node scripts/build.mjs",
+    "dev": "node scripts/build.mjs --watch",
+    "package": "node scripts/build.mjs && node scripts/package.mjs",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "check": "npm run typecheck && npm test && npm run build"
   },
   "devDependencies": {
-    "@types/chrome": "^0.0.268",
-    "@types/string-similarity": "^4.0.2",
-    "esbuild": "^0.21.5",
-    "typescript": "^5.4.5"
+    "@types/chrome": "^0.3.4",
+    "esbuild": "^0.28.2",
+    "typescript": "^5.9.3",
+    "vitest": "^5.0.2"
   }
 }
-

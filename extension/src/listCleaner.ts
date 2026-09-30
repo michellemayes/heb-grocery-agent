@@ -1,5 +1,6 @@
-import { findBestMatch } from "string-similarity";
 import { GROCERY_DATABASE, normalizeGroceryName } from "./groceryDatabase";
+import { GENERIC_SECTION_HEADERS } from "./listParser";
+import { findBestMatch } from "./similarity";
 import type { CleanupChange, CleanupDiff } from "./types";
 
 const SIMILARITY_THRESHOLD = 0.7;
@@ -16,24 +17,8 @@ export function cleanShoppingList(listText: string): CleanupDiff {
   const seenItems = new Set<string>();
 
   for (const line of lines) {
-    // Skip category headers
-    if (/^\s*\[.*\]\s*$/.test(line)) {
-      cleanedLines.push(line);
-      changes.push({
-        type: "unchanged",
-        original: line,
-        cleaned: line,
-      });
-      continue;
-    }
-
-    // Skip generic section headers
-    const lowerLine = line.toLowerCase();
-    if (
-      lowerLine === "groceries" ||
-      lowerLine === "grocery list" ||
-      lowerLine === "shopping list"
-    ) {
+    // Keep category headers and list titles as they are
+    if (/^\[.*\]$/.test(line) || GENERIC_SECTION_HEADERS.has(line.toLowerCase())) {
       cleanedLines.push(line);
       changes.push({
         type: "unchanged",
@@ -49,11 +34,12 @@ export function cleanShoppingList(listText: string): CleanupDiff {
       continue;
     }
 
-    // Normalize for matching
     const normalized = normalizeGroceryName(itemName);
+    const { match: matchedItem, rating } = findBestMatch(normalized, GROCERY_DATABASE);
 
-    // Check for duplicates
-    if (seenItems.has(normalized)) {
+    // Compare on the corrected name so "bnanas" and "bananas" count as duplicates.
+    const key = rating >= SIMILARITY_THRESHOLD ? matchedItem : normalized;
+    if (seenItems.has(key)) {
       changes.push({
         type: "removed",
         original: line,
@@ -62,12 +48,7 @@ export function cleanShoppingList(listText: string): CleanupDiff {
       });
       continue;
     }
-
-    seenItems.add(normalized);
-
-    // Find best match in database
-    const bestMatch = findBestMatch(normalized, GROCERY_DATABASE);
-    const { target: matchedItem, rating } = bestMatch.bestMatch;
+    seenItems.add(key);
 
     if (rating >= SIMILARITY_THRESHOLD && matchedItem !== normalized) {
       // Found a better match - fix typo or standardize

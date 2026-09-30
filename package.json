@@ -1,23 +1,20 @@
 {
   "name": "heb-grocery-agent",
-  "version": "1.0.0",
   "private": true,
-  "description": "Chrome extension to automate HEB grocery shopping from free-form lists.",
+  "description": "Chrome extension that adds a grocery list to your HEB.com cart.",
   "workspaces": [
     "extension"
   ],
+  "engines": {
+    "node": ">=22"
+  },
   "scripts": {
     "build": "npm run build --workspace extension",
     "dev": "npm run dev --workspace extension",
-    "clean": "rm -rf extension/dist"
+    "package": "npm run package --workspace extension",
+    "typecheck": "npm run typecheck --workspace extension",
+    "test": "npm test --workspace extension",
+    "check": "npm run check --workspace extension"
   },
-  "keywords": [
-    "heb",
-    "chrome-extension",
-    "automation",
-    "grocery"
-  ],
-  "author": "",
-  "license": "MIT",
-  "devDependencies": {}
+  "license": "MIT"
 }
